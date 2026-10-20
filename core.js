@@ -115,7 +115,8 @@
       ], true);
     }},
     shop: { name:'Shop list', build(t, o) {
-      const items = [['\u27A4','Speed Boost',250,1],['\u2B06','Double Jump',500,2],['\u25CF','Pet Egg',1200,3],['\u2655','VIP Pass',5000,4]];
+      const cp = o.copy || {}, nm = cp.items || [];
+      const items = [['\u27A4',nm[0]||'Speed Boost',250,1],['\u2B06',nm[1]||'Double Jump',500,2],['\u25CF',nm[2]||'Pet Egg',1200,3],['\u2655',nm[3]||'VIP Pass',5000,4]];
       const rows = items.map((it,i)=> frame(t,'Item'+(i+1),U(1,0,0,62),U(0,0,0,0),darken(t.panel2,0.1),{ LayoutOrder:i+1 },[
         frame(t,'IconBox',U(0,46,0,46),U(0,8,0.5,-23),darken(t.panel2,0.35),{},[label(t,'Icon',it[0],U(1,0,1,0),null,{ textSize:26 })],{ strokeThickness:2, strokeColor:RARITY[it[3]], radius:Math.max(3,t.radius-3) }),
         label(t,'ItemName',it[1],U(0.45,0,0,24),U(0,64,0,10),{ align:'Left', textSize:18 }),
@@ -138,9 +139,9 @@
     quest: { name:'Quest / dialog', build(t, o) {
       const f = frame(t,'Dialog',U(0,430,0,210),U(1,-446,1,-226),t.panel,{},[
         frame(t,'Portrait',U(0,64,0,64),U(0,14,0,14),t.panel2,{},[label(t,'Face','\u2726',U(1,0,1,0),null,{ textSize:38 })],{ radius:12, strokeThickness:3 }),
-        label(t,'Speaker','Old Guide',U(1,-100,0,26),U(0,90,0,14),{ align:'Left', textSize:22, color:t.accent }),
+        label(t,'Speaker',(o.copy&&o.copy.npc)||'Old Guide',U(1,-100,0,26),U(0,90,0,14),{ align:'Left', textSize:22, color:t.accent }),
         label(t,'Tag','QUEST  \u2022  Easy',U(1,-100,0,18),U(0,90,0,40),{ align:'Left', textSize:13, color:t.muted }),
-        label(t,'Message','Bring me 5 glowing crystals from the cave and I will reward you.',U(1,-32,0,56),U(0,16,0,86),{ align:'Left', textSize:17, extra:{ TextWrapped:true, TextYAlignment:'Top' } }),
+        label(t,'Message',(o.copy&&o.copy.quest)||'Bring me 5 glowing crystals from the cave and I will reward you.',U(1,-32,0,56),U(0,16,0,86),{ align:'Left', textSize:17, extra:{ TextWrapped:true, TextYAlignment:'Top' } }),
         button(t,'Accept','Accept',U(0,124,0,40),U(1,-268,1,-54),'good'),
         button(t,'Decline','Decline',U(0,124,0,40),U(1,-140,1,-54),'secondary')
       ],{ gradient:[lighten(t.panel,0.06), darken(t.panel,0.2)], strokeThickness:t.stroke+1 });

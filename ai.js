@@ -34,7 +34,7 @@
   const MODEL_IDS = ['sword','tree','house','crate','potion','crystal','chest','tower','coin','ship','car','robot','shield','mushroom','pet'];
   const MOTION_IDS = ['popIn','pulse','shake','slideIn','bounce','glow','fadeIn'];
   const BIBLE_SYSTEM = `You are the art director for a Roblox game. Read the game idea and choose a consistent style. Reply with ONLY one JSON object, no prose:
-{"genre":one of ${GENRE_IDS.join('|')},"title":"2-4 word catchy game title","hero":one of ${MODEL_IDS.join('|')},"motion":one of ${MOTION_IDS.join('|')},"accent":"#rrggbb main brand color","accent2":"#rrggbb secondary color","panel":motion for menus opening,"button":motion for button hover or idle,"error":motion for wrong actions,"speed":seconds 0.2-1.0 that fits the mood,"ease":one of Quad|Back|Bounce|Elastic|Sine}
+{"genre":one of ${GENRE_IDS.join('|')},"title":"2-4 word catchy game title","hero":one of ${MODEL_IDS.join('|')},"motion":one of ${MOTION_IDS.join('|')},"accent":"#rrggbb main brand color","accent2":"#rrggbb secondary color","panel":motion for menus opening,"button":motion for button hover or idle,"error":motion for wrong actions,"speed":seconds 0.2-1.0 that fits the mood,"ease":one of Quad|Back|Bounce|Elastic|Sine,"items":[4 shop item names, 2-3 words each, fitting the game],"npc":"quest giver name","quest":"one quest sentence under 70 chars"}
 Pick the closest genre even if the idea is unusual. Motions are each one of ${MOTION_IDS.join('|')}. Horror is slow and sharp, cute is bouncy, sci-fi is smooth and quick. The hero is the single 3D object that best represents the game.`;
   async function generateBible(prompt, signal) {
     if (!WORKER_URL) throw new Error('Fast AI is not available right now');
@@ -47,6 +47,10 @@ Pick the closest genre even if the idea is unusual. Motions are each one of ${MO
     const mo = {}; ['panel','button','error'].forEach(k => { if (MOTION_IDS.includes(j[k])) mo[k] = j[k]; }); if (Object.keys(mo).length) out.motions = mo;
     const sp = +j.speed; if (Number.isFinite(sp)) out.dur = Math.min(1.2, Math.max(0.2, sp));
     if (['Quad','Back','Bounce','Elastic','Sine'].includes(j.ease)) out.ease = j.ease;
+    const cl = s => String(s).replace(/[^A-Za-z0-9 !?.,'-]/g, '').trim();
+    const copy = {}; if (Array.isArray(j.items)) { const it = j.items.filter(x => typeof x === 'string').map(x => cl(x).slice(0, 22)).filter(Boolean); if (it.length >= 4) copy.items = it.slice(0, 4); }
+    if (typeof j.npc === 'string' && cl(j.npc)) copy.npc = cl(j.npc).slice(0, 22); if (typeof j.quest === 'string' && cl(j.quest).length > 8) copy.quest = cl(j.quest).slice(0, 80);
+    if (Object.keys(copy).length) out.copy = copy;
     if (typeof j.title === 'string') out.title = j.title.replace(/[^A-Za-z0-9 !'-]/g, '').trim().slice(0, 28);
     const a1 = hex(j.accent, null), a2 = hex(j.accent2, null); if (a1) out.accent = a1; if (a2) out.accent2 = a2;
     return out;

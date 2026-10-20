@@ -40,7 +40,7 @@
     over = over || {}; const g = GENRES.find(x => x.id === over.genre);
     const b = Object.assign({}, bible);
     if (g) { b.genre = g.id; b.theme = g.theme; b.thumbStyle = g.thumb; b.palette = g.pal; b.model = g.model; b.motion = g.anim; b.accent = g.accent; b.accent2 = g.accent2; }
-    ['model', 'motion', 'accent', 'accent2', 'motions', 'dur', 'ease'].forEach(k => { if (over[k]) b[k] = over[k]; });
+    ['model', 'motion', 'accent', 'accent2', 'motions', 'dur', 'ease', 'copy'].forEach(k => { if (over[k]) b[k] = over[k]; });
     if (over.title) { b.title = over.title; b.name = safe(over.title); }
     if (over.accent) { // make thumbnail and 3D palette follow the AI's brand color
       const h = hue(over.accent);
@@ -53,7 +53,7 @@
   // Step 2: build every asset from the bible. `ai` is optional (AI hero model and/or theme already applied to the bible).
   function build(bible, opts) {
     opts = opts || {}; const F = opts.core || root.FreeForge, G = opts.g3d || root.FreeForge3D, A = opts.anim || root.FreeForgeAnim;
-    const kit = F.buildKit({ theme: bible.theme, themeObj: bible.themeObj || undefined, accent: bible.accent, accent2: bible.accent2, name: bible.name + 'UI' });
+    const kit = F.buildKit({ theme: bible.theme, themeObj: bible.themeObj || undefined, accent: bible.accent, accent2: bible.accent2, name: bible.name + 'UI', copy: bible.copy });
     const model = opts.aiModel || G.buildModel({ model: bible.model, palette: bible.palette, accent: bible.accent });
     const name = bible.name;
     const files = {};

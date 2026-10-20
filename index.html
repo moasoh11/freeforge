@@ -178,7 +178,8 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
       ], true);
     }},
     shop: { name:'Shop list', build(t, o) {
-      const items = [['\u27A4','Speed Boost',250,1],['\u2B06','Double Jump',500,2],['\u25CF','Pet Egg',1200,3],['\u2655','VIP Pass',5000,4]];
+      const cp = o.copy || {}, nm = cp.items || [];
+      const items = [['\u27A4',nm[0]||'Speed Boost',250,1],['\u2B06',nm[1]||'Double Jump',500,2],['\u25CF',nm[2]||'Pet Egg',1200,3],['\u2655',nm[3]||'VIP Pass',5000,4]];
       const rows = items.map((it,i)=> frame(t,'Item'+(i+1),U(1,0,0,62),U(0,0,0,0),darken(t.panel2,0.1),{ LayoutOrder:i+1 },[
         frame(t,'IconBox',U(0,46,0,46),U(0,8,0.5,-23),darken(t.panel2,0.35),{},[label(t,'Icon',it[0],U(1,0,1,0),null,{ textSize:26 })],{ strokeThickness:2, strokeColor:RARITY[it[3]], radius:Math.max(3,t.radius-3) }),
         label(t,'ItemName',it[1],U(0.45,0,0,24),U(0,64,0,10),{ align:'Left', textSize:18 }),
@@ -201,9 +202,9 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
     quest: { name:'Quest / dialog', build(t, o) {
       const f = frame(t,'Dialog',U(0,430,0,210),U(1,-446,1,-226),t.panel,{},[
         frame(t,'Portrait',U(0,64,0,64),U(0,14,0,14),t.panel2,{},[label(t,'Face','\u2726',U(1,0,1,0),null,{ textSize:38 })],{ radius:12, strokeThickness:3 }),
-        label(t,'Speaker','Old Guide',U(1,-100,0,26),U(0,90,0,14),{ align:'Left', textSize:22, color:t.accent }),
+        label(t,'Speaker',(o.copy&&o.copy.npc)||'Old Guide',U(1,-100,0,26),U(0,90,0,14),{ align:'Left', textSize:22, color:t.accent }),
         label(t,'Tag','QUEST  \u2022  Easy',U(1,-100,0,18),U(0,90,0,40),{ align:'Left', textSize:13, color:t.muted }),
-        label(t,'Message','Bring me 5 glowing crystals from the cave and I will reward you.',U(1,-32,0,56),U(0,16,0,86),{ align:'Left', textSize:17, extra:{ TextWrapped:true, TextYAlignment:'Top' } }),
+        label(t,'Message',(o.copy&&o.copy.quest)||'Bring me 5 glowing crystals from the cave and I will reward you.',U(1,-32,0,56),U(0,16,0,86),{ align:'Left', textSize:17, extra:{ TextWrapped:true, TextYAlignment:'Top' } }),
         button(t,'Accept','Accept',U(0,124,0,40),U(1,-268,1,-54),'good'),
         button(t,'Decline','Decline',U(0,124,0,40),U(1,-140,1,-54),'secondary')
       ],{ gradient:[lighten(t.panel,0.06), darken(t.panel,0.2)], strokeThickness:t.stroke+1 });
@@ -764,7 +765,7 @@ TweenService:Create(obj, TweenInfo.new(${d}, Enum.EasingStyle.${e}), { Backgroun
   const MODEL_IDS = ['sword','tree','house','crate','potion','crystal','chest','tower','coin','ship','car','robot','shield','mushroom','pet'];
   const MOTION_IDS = ['popIn','pulse','shake','slideIn','bounce','glow','fadeIn'];
   const BIBLE_SYSTEM = `You are the art director for a Roblox game. Read the game idea and choose a consistent style. Reply with ONLY one JSON object, no prose:
-{"genre":one of ${GENRE_IDS.join('|')},"title":"2-4 word catchy game title","hero":one of ${MODEL_IDS.join('|')},"motion":one of ${MOTION_IDS.join('|')},"accent":"#rrggbb main brand color","accent2":"#rrggbb secondary color","panel":motion for menus opening,"button":motion for button hover or idle,"error":motion for wrong actions,"speed":seconds 0.2-1.0 that fits the mood,"ease":one of Quad|Back|Bounce|Elastic|Sine}
+{"genre":one of ${GENRE_IDS.join('|')},"title":"2-4 word catchy game title","hero":one of ${MODEL_IDS.join('|')},"motion":one of ${MOTION_IDS.join('|')},"accent":"#rrggbb main brand color","accent2":"#rrggbb secondary color","panel":motion for menus opening,"button":motion for button hover or idle,"error":motion for wrong actions,"speed":seconds 0.2-1.0 that fits the mood,"ease":one of Quad|Back|Bounce|Elastic|Sine,"items":[4 shop item names, 2-3 words each, fitting the game],"npc":"quest giver name","quest":"one quest sentence under 70 chars"}
 Pick the closest genre even if the idea is unusual. Motions are each one of ${MOTION_IDS.join('|')}. Horror is slow and sharp, cute is bouncy, sci-fi is smooth and quick. The hero is the single 3D object that best represents the game.`;
   async function generateBible(prompt, signal) {
     if (!WORKER_URL) throw new Error('Fast AI is not available right now');
@@ -777,6 +778,10 @@ Pick the closest genre even if the idea is unusual. Motions are each one of ${MO
     const mo = {}; ['panel','button','error'].forEach(k => { if (MOTION_IDS.includes(j[k])) mo[k] = j[k]; }); if (Object.keys(mo).length) out.motions = mo;
     const sp = +j.speed; if (Number.isFinite(sp)) out.dur = Math.min(1.2, Math.max(0.2, sp));
     if (['Quad','Back','Bounce','Elastic','Sine'].includes(j.ease)) out.ease = j.ease;
+    const cl = s => String(s).replace(/[^A-Za-z0-9 !?.,'-]/g, '').trim();
+    const copy = {}; if (Array.isArray(j.items)) { const it = j.items.filter(x => typeof x === 'string').map(x => cl(x).slice(0, 22)).filter(Boolean); if (it.length >= 4) copy.items = it.slice(0, 4); }
+    if (typeof j.npc === 'string' && cl(j.npc)) copy.npc = cl(j.npc).slice(0, 22); if (typeof j.quest === 'string' && cl(j.quest).length > 8) copy.quest = cl(j.quest).slice(0, 80);
+    if (Object.keys(copy).length) out.copy = copy;
     if (typeof j.title === 'string') out.title = j.title.replace(/[^A-Za-z0-9 !'-]/g, '').trim().slice(0, 28);
     const a1 = hex(j.accent, null), a2 = hex(j.accent2, null); if (a1) out.accent = a1; if (a2) out.accent2 = a2;
     return out;
@@ -985,7 +990,7 @@ Rules: panel is a dark or light surface, panel2 slightly different, text must ha
     over = over || {}; const g = GENRES.find(x => x.id === over.genre);
     const b = Object.assign({}, bible);
     if (g) { b.genre = g.id; b.theme = g.theme; b.thumbStyle = g.thumb; b.palette = g.pal; b.model = g.model; b.motion = g.anim; b.accent = g.accent; b.accent2 = g.accent2; }
-    ['model', 'motion', 'accent', 'accent2', 'motions', 'dur', 'ease'].forEach(k => { if (over[k]) b[k] = over[k]; });
+    ['model', 'motion', 'accent', 'accent2', 'motions', 'dur', 'ease', 'copy'].forEach(k => { if (over[k]) b[k] = over[k]; });
     if (over.title) { b.title = over.title; b.name = safe(over.title); }
     if (over.accent) { // make thumbnail and 3D palette follow the AI's brand color
       const h = hue(over.accent);
@@ -998,7 +1003,7 @@ Rules: panel is a dark or light surface, panel2 slightly different, text must ha
   // Step 2: build every asset from the bible. `ai` is optional (AI hero model and/or theme already applied to the bible).
   function build(bible, opts) {
     opts = opts || {}; const F = opts.core || root.FreeForge, G = opts.g3d || root.FreeForge3D, A = opts.anim || root.FreeForgeAnim;
-    const kit = F.buildKit({ theme: bible.theme, themeObj: bible.themeObj || undefined, accent: bible.accent, accent2: bible.accent2, name: bible.name + 'UI' });
+    const kit = F.buildKit({ theme: bible.theme, themeObj: bible.themeObj || undefined, accent: bible.accent, accent2: bible.accent2, name: bible.name + 'UI', copy: bible.copy });
     const model = opts.aiModel || G.buildModel({ model: bible.model, palette: bible.palette, accent: bible.accent });
     const name = bible.name;
     const files = {};
@@ -1098,7 +1103,7 @@ const EN=window.FreeForgeEngine;let ePack=null;
 function eShow(r){const b=r.bible;const t=b.themeObj||F.THEMES[b.theme];const pv={cls:r.kit.cls,props:r.kit.props,children:r.kit.children.filter(c=>['HUD','Buttons','Dialog'].includes(c.props.Name))};$('e-stage').innerHTML=F.toHtml(pv,960,540);$('e-stage').firstChild.style.background='linear-gradient(135deg,'+t.bg+',#000)';
 TH.draw($('e-th'),{title:r.thumbSpec.title,subtitle:r.thumbSpec.subtitle,style:b.thumbStyle,model:r.model,glow:'#ffffff',seed:r.thumbSpec.seed});TH.drawIcon($('e-ic'),r.iconSpec);
 const c=$('e-3d').getContext('2d');c.clearRect(0,0,384,216);G3.render(c,r.model,384,216,35,-16,null,0);
-$('e-info').textContent='Style bible\n  genre: '+b.genre+'\n  UI theme: '+(b.aiTheme?'AI custom':b.theme)+'\n  palette: '+b.palette+'\n  thumbnail: '+b.thumbStyle+'\n  hero model: '+(r.model.name||b.model)+'\n  motion: '+b.motion+(b.motions?' (panel '+b.motions.panel+', button '+b.motions.button+', error '+b.motions.error+', '+(b.dur||'')+'s '+(b.ease||'')+')':'')+'\nFiles in the pack: '+Object.keys(r.files).length+' (+ thumbnail.png and icon.png)'}
+$('e-info').textContent='Style bible\n  genre: '+b.genre+'\n  UI theme: '+(b.aiTheme?'AI custom':b.theme)+'\n  palette: '+b.palette+'\n  thumbnail: '+b.thumbStyle+'\n  hero model: '+(r.model.name||b.model)+'\n  copy: '+(b.copy?'AI-written shop items, NPC and quest':'default text')+'\n  motion: '+b.motion+(b.motions?' (panel '+b.motions.panel+', button '+b.motions.button+', error '+b.motions.error+', '+(b.dur||'')+'s '+(b.ease||'')+')':'')+'\nFiles in the pack: '+Object.keys(r.files).length+' (+ thumbnail.png and icon.png)'}
 $('t-aibg-b').onclick=()=>{const st=$('t-aibg-s'),b=$('t-aibg-b');b.disabled=true;st.textContent='Generating (about 5s)...';AI.generateImage($('t-aibg').value,'thumbnail').then(im=>{tBg=im;tRender();st.textContent='Done. Only your typed text was sent to the free AI server.'}).catch(e=>{st.textContent='Could not generate: '+e.message}).finally(()=>{b.disabled=false})};
 $('t-aibg-x').onclick=()=>{tBg=null;tRender();$('t-aibg-s').textContent=''};
 $('e-go').onclick=async()=>{const st=$('e-st');try{const b=EN.plan($('e-p').value);$('e-go').disabled=true;
