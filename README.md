@@ -11,3 +11,6 @@ Limits: not tested in Roblox Studio; models are low-poly parametric.
 ## AI features and models
 - Text/structure AI: Pollinations anonymous text API (open GPT-OSS 20B), no key, rate limited to one request per 30s per IP. Used to design 3D models as validated primitive parts and to design UI themes. Only the typed prompt is sent; output is sanitized and clamped.
 - Pollinations anonymous image API exists (one model, logo on every image, 45s limit); not integrated because quality is low and the logo is mandatory.
+
+## Engine
+One prompt in, a consistent asset pack out (UI kit, 3D hero model, animation, thumbnail, icon, zip). Original code in engine.js: prompt -> style bible -> assets. Tests: node test/testengine.js

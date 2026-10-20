@@ -17,7 +17,12 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
 .note{background:#1b2136;border-radius:10px;padding:10px 12px;margin-top:12px;color:#aab0d8;font-size:13px;line-height:1.45}
 #top{position:fixed;top:0;left:0;right:0;height:44px;background:#0a0c13;border-bottom:1px solid #262c44;display:flex;align-items:center;gap:8px;padding:0 16px;z-index:9}#top b{color:#00e5ff;margin-right:12px}#top button{background:none;border:0;color:#aab0d8;padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:700}#top button.on{background:#1b2136;color:#fff}#top span{margin-left:auto;color:#8f93b8;font-size:12px}#wrap{display:flex;width:100%;margin-top:44px;min-height:calc(100vh - 44px)}.hid{display:none!important}canvas#cv{background:radial-gradient(circle at 50% 40%,#2b3252,#0d0f17);border-radius:12px;display:block}
 </style></head><body>
-<nav id="top"><b>FreeForge</b><button data-p="ui" class="on">UI kits</button><button data-p="m3d">3D models</button><button data-p="anim">Animation</button><button data-p="thumb">Thumbnails & icons</button><span>free, private, nothing uploaded</span></nav><div id="wrap"><aside id="p-ui">
+<nav id="top"><b>FreeForge</b><button data-p="eng">Engine</button><button data-p="ui" class="on">UI kits</button><button data-p="m3d">3D models</button><button data-p="anim">Animation</button><button data-p="thumb">Thumbnails & icons</button><span>free, private, nothing uploaded</span></nav><div id="wrap"><aside id="p-eng" class="hid"><h1>FreeForge Engine</h1><small>One prompt in, a matching asset pack out: UI kit, 3D hero model, animation, thumbnail and icon. All free, built in your browser.</small>
+<label>Describe your game</label><input type="text" id="e-p" maxlength="100" placeholder="e.g. spooky haunted house horror" value="dragon kingdom rpg">
+<label class="chk"><input type="checkbox" id="e-ai"> Also ask the free AI for a custom theme (slower, sends the text above to a third party)</label>
+<button class="dl" id="e-go" style="margin-top:12px">Generate asset pack</button><div id="e-st" style="margin-top:8px;font-size:12px"></div>
+<button class="dl alt" id="e-zip" style="margin-top:8px" disabled>Download pack (.zip)</button>
+<div class="note"><b>How it works:</b> your prompt becomes a style bible (genre, theme, palette, thumbnail style, hero model, motion). Every asset is then built from that one bible so they match. Without AI this is instant and works offline.</div></aside><aside id="p-ui">
 <h1>FreeForge</h1><small>Free Roblox UI kit builder. No account, no credits, nothing uploaded.</small>
 <div class="note" style="margin-top:12px"><b>AI theme</b> (free AI)<input type="text" id="ai-theme-p" placeholder="e.g. spooky halloween tycoon" maxlength="120" style="margin-top:6px"><button class="dl" id="ai-theme-b" style="margin-top:6px">Generate theme</button><div id="ai-theme-s" style="margin-top:6px;font-size:12px"></div></div><label>Theme</label><select id="theme"></select>
 <label>Accent color</label><input type="color" id="accent">
@@ -32,7 +37,7 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
 <button class="dl alt" id="cp-lua">Copy Luau script</button>
 <div class="note" id="ai-disc"><b>About the AI features:</b> when you press an AI button, only the text you typed is sent to the free Pollinations text API (open GPT-OSS 20B model, run by a third party, anonymous, about one request per 30 seconds per connection). Nothing else is uploaded; do not type personal information. AI output is validated and clamped before use. Everything else runs in your browser.</div><div class="note"><b>Use it:</b> .rbxmx: in Studio right-click StarterGui, Insert from File. Luau: paste into a LocalScript in StarterPlayerScripts. Every part is a real editable Frame, TextButton, UICorner, UIStroke. No flat images.</div>
 </aside>
-<main id="m-ui"><div id="stage"></div>
+<main id="m-eng" class="hid"><div id="e-stage" style="display:inline-block;border-radius:12px;overflow:hidden"></div><div style="display:flex;gap:14px;margin-top:12px;align-items:flex-start;flex-wrap:wrap"><canvas id="e-th" width="1280" height="720" style="width:384px;height:216px;border-radius:10px"></canvas><canvas id="e-ic" width="512" height="512" style="width:216px;height:216px"></canvas><canvas id="e-3d" width="384" height="216" style="border-radius:10px;background:#12121c"></canvas></div><pre id="e-info" style="margin-top:12px"></pre></main><main id="m-ui"><div id="stage"></div>
 <div class="tabs"><button data-t="lua">Luau</button><button data-t="xml">.rbxmx</button></div><pre id="code"></pre></main>
 
 <aside id="p-m3d" class="hid"><h1>3D Models</h1><small>Parametric models built from parts. Same geometry feeds the preview, the GLB and the Roblox export.</small>
@@ -874,6 +879,78 @@ Rules: panel is a dark or light surface, panel2 slightly different, text must ha
   }
   root.FreeForgeThumb = { STYLES, draw, drawIcon };
 })(typeof window!=='undefined'?window:globalThis);
+</script><script>/* FreeForge Engine: one prompt in, a consistent asset pack out.
+   prompt -> style bible (genre, theme, palette, thumbnail style, hero model, motion)
+   -> UI kit + 3D hero model + animation + thumbnail/icon specs, all sharing that style
+   -> files (Luau, rbxmx, glb, json) packed into a zip. Original code; no third-party assets. */
+(function (root) {
+  'use strict';
+  const GENRES = [
+    { id:'horror',    kw:/horror|spooky|haunt|scary|zombie|ghost|dark|halloween|creep|nightmare/, theme:'medieval', thumb:'dark',    pal:'dark',    model:'crate',   anim:'shake',   accent:'#ff5a3d', accent2:'#8c2f39' },
+    { id:'scifi',     kw:/sci-?fi|space|robot|cyber|galaxy|alien|laser|mech|futur|neon city|station/, theme:'scifi', thumb:'neon', pal:'neon', model:'crystal', anim:'glow', accent:'#4df2c8', accent2:'#3d8bff' },
+    { id:'cute',      kw:/cute|pet|candy|sweet|bakery|cake|kawaii|bunny|cat|dog|rainbow|simulator|garden|pastel/, theme:'candy', thumb:'candy', pal:'candy', model:'potion', anim:'bounce', accent:'#ff5fa8', accent2:'#7a5cff' },
+    { id:'fantasy',   kw:/fantasy|medieval|sword|dragon|knight|kingdom|rpg|magic|wizard|castle|quest|dungeon|elf/, theme:'medieval', thumb:'sunburst', pal:'fantasy', model:'sword', anim:'popIn', accent:'#e0b04a', accent2:'#b5532f' },
+    { id:'tycoon',    kw:/tycoon|factory|shop|store|cash|money|business|empire|restaurant|city|mine/, theme:'neon', thumb:'sunburst', pal:'fantasy', model:'chest', anim:'slideIn', accent:'#3dff8b', accent2:'#ffd23d' },
+    { id:'obby',      kw:/obby|parkour|race|speed|run|tower of|climb|adventure/, theme:'light', thumb:'sunburst', pal:'candy', model:'tower', anim:'pulse', accent:'#2f8bff', accent2:'#ff7a2f' }
+  ];
+  const FALLBACK = GENRES[3];
+  function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  const safe = s => String(s || 'FreeForge').replace(/[^A-Za-z0-9 ]/g, '').trim().replace(/\s+/g, '_').slice(0, 24) || 'FreeForge';
+  const titleCase = s => String(s).replace(/\b\w/g, c => c.toUpperCase());
+
+  // Step 1: style bible. Deterministic keyword plan, optionally upgraded by a free AI theme.
+  function plan(prompt, opts) {
+    opts = opts || {};
+    const p = String(prompt || '').trim().slice(0, 120); if (!p) throw new Error('Describe your game first');
+    const low = p.toLowerCase();
+    let best = FALLBACK, score = 0;
+    GENRES.forEach(g => { const m = low.match(new RegExp(g.kw.source, 'g')); const sc = m ? m.length : 0; if (sc > score) { score = sc; best = g; } });
+    const seed = hash(low);
+    const bible = { prompt: p, name: safe(p), title: titleCase(p).slice(0, 28), genre: best.id, theme: best.theme, themeObj: null, thumbStyle: best.thumb, palette: best.pal, model: best.model, motion: best.anim, accent: best.accent, accent2: best.accent2, seed, aiTheme: false };
+    return bible;
+  }
+
+  // Step 2: build every asset from the bible. `ai` is optional (AI hero model and/or theme already applied to the bible).
+  function build(bible, opts) {
+    opts = opts || {}; const F = opts.core || root.FreeForge, G = opts.g3d || root.FreeForge3D, A = opts.anim || root.FreeForgeAnim;
+    const kit = F.buildKit({ theme: bible.theme, themeObj: bible.themeObj || undefined, accent: bible.accent, accent2: bible.accent2, name: bible.name + 'UI' });
+    const model = opts.aiModel || G.buildModel({ model: bible.model, palette: bible.palette, accent: bible.accent });
+    const name = bible.name;
+    const files = {};
+    files['ui/' + name + '_UI.lua'] = F.toLuau(kit);
+    files['ui/' + name + '_UI.rbxmx'] = F.toRbxmx(kit);
+    files['animation/' + name + '_' + bible.motion + '.lua'] = A.uiLuau(bible.motion, {});
+    files['model3d/' + name + '_hero.rbxmx'] = G.toRbxmx(model, name + 'Hero');
+    files['model3d/' + name + '_hero.lua'] = G.toLuau(model, name + 'Hero');
+    const glb = G.toGlb(model, name + 'Hero'); files['model3d/' + name + '_hero.glb'] = glb;
+    const thumbSpec = { style: bible.thumbStyle, title: bible.title.toUpperCase(), subtitle: 'NEW UPDATE', seed: bible.seed % 997, model };
+    const iconSpec = { model, rarity: bible.accent, yaw: 35 };
+    files['STYLE.json'] = JSON.stringify({ prompt: bible.prompt, genre: bible.genre, theme: bible.theme, palette: bible.palette, thumbnailStyle: bible.thumbStyle, heroModel: model.name || bible.model, motion: bible.motion, accent: bible.accent, accent2: bible.accent2, aiTheme: bible.aiTheme }, null, 2);
+    files['README.txt'] = 'FreeForge asset pack for "' + bible.prompt + '"\n\nui/        paste the .lua into a LocalScript, or insert the .rbxmx\nanimation/ TweenService animation for the UI\nmodel3d/   hero model as .rbxmx, .lua builder script or .glb\nthumbnail.png and icon.png are added when generated in the browser.\n\nEverything here shares one style (STYLE.json). Made free with FreeForge, nothing was uploaded except an optional typed AI prompt.\n';
+    return { bible, kit, model, thumbSpec, iconSpec, files };
+  }
+
+  // Step 3: store-only ZIP writer (no dependencies)
+  const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = u8 => { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  const enc = s => typeof TextEncoder !== 'undefined' ? new TextEncoder().encode(s) : Uint8Array.from(Buffer.from(s, 'utf8'));
+  function zip(files) {
+    const parts = [], central = []; let off = 0;
+    const u16 = v => [v & 255, (v >>> 8) & 255], u32 = v => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
+    Object.keys(files).forEach(path => {
+      const raw = files[path], data = typeof raw === 'string' ? enc(raw) : raw, nm = enc(path), crc = crc32(data);
+      const lh = Uint8Array.from([0x50, 0x4b, 3, 4, 20, 0, 0, 8, 0, 0, 0, 0, 0x21, 0, ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(nm.length), 0, 0]);
+      parts.push(lh, nm, data);
+      central.push(Uint8Array.from([0x50, 0x4b, 1, 2, 20, 0, 20, 0, 0, 8, 0, 0, 0, 0, 0x21, 0, ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(nm.length), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ...u32(off)]), nm);
+      off += lh.length + nm.length + data.length;
+    });
+    const cs = central.reduce((a, b) => a + b.length, 0);
+    const end = Uint8Array.from([0x50, 0x4b, 5, 6, 0, 0, 0, 0, ...u16(Object.keys(files).length), ...u16(Object.keys(files).length), ...u32(cs), ...u32(off), 0, 0]);
+    const all = parts.concat(central, [end]); const out = new Uint8Array(all.reduce((a, b) => a + b.length, 0)); let p = 0; all.forEach(b => { out.set(b, p); p += b.length; }); return out;
+  }
+  const api = { GENRES, plan, build, zip, crc32 };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FreeForgeEngine = api;
+})(typeof window !== 'undefined' ? window : globalThis);
 </script>
 <script>
 const F=window.FreeForge,$=id=>document.getElementById(id);let tab='lua';
@@ -895,8 +972,8 @@ $('view').onchange=render;$('theme').onchange=()=>{sync();render()};
 document.getElementById('comps').onchange=render;sync();(function(){const h=location.hash.slice(1).split(',');if(h[0]&&F.THEMES[h[0]]){$('theme').value=h[0];sync()}if(h[1])$('view').value=h[1]})();render();
 
 /* ---- tabs, 3D, animation ---- */
-const G3=window.FreeForge3D,AN=window.FreeForgeAnim;let panel='ui',yaw=25,t0=performance.now();
-function showPanel(p){panel=p;['ui','m3d','anim','thumb'].forEach(x=>{$('p-'+x).classList.toggle('hid',x!==p);$('m-'+x).classList.toggle('hid',x!==p)});document.querySelectorAll('#top button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));if(p==='anim')aRender();if(p==='m3d')mRender();if(p==='thumb')tRender()}
+const G3=window.FreeForge3D,AN=window.FreeForgeAnim;let aiTheme=null,aiModel=null;let panel='ui',yaw=25,t0=performance.now();
+function showPanel(p){panel=p;['eng','ui','m3d','anim','thumb'].forEach(x=>{$('p-'+x).classList.toggle('hid',x!==p);$('m-'+x).classList.toggle('hid',x!==p)});document.querySelectorAll('#top button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));if(p==='anim')aRender();if(p==='m3d')mRender();if(p==='thumb')tRender()}
 document.querySelectorAll('#top button').forEach(b=>b.onclick=()=>showPanel(b.dataset.p));
 for(const k in G3.MODELS){const o=document.createElement('option');o.value=k;o.textContent=G3.MODELS[k].name;$('mdl').appendChild(o)}
 for(const k in G3.PALETTES){const o=document.createElement('option');o.value=k;o.textContent=k[0].toUpperCase()+k.slice(1);$('pal').appendChild(o)}
@@ -922,13 +999,25 @@ mRender();requestAnimationFrame(frame3d);
 
 
 /* ---- AI ---- */
-const AI=window.FreeForgeAI;let aiTheme=null,aiModel=null;
+const AI=window.FreeForgeAI;
 function aiBusy(btn,statusEl,fn,done){const left=AI.cooldownLeft();if(left>0){statusEl.textContent='Free AI is limited to one request per 30s. Wait '+left+'s.';return}
 btn.disabled=true;statusEl.textContent='Thinking... (about 10-30s)';fn().then(r=>{done(r);statusEl.textContent='Done.'}).catch(e=>{statusEl.textContent='Could not generate: '+e.message}).finally(()=>{btn.disabled=false})}
 $('ai-theme-b').onclick=()=>aiBusy($('ai-theme-b'),$('ai-theme-s'),()=>AI.generateTheme($('ai-theme-p').value),t=>{aiTheme=t;F.THEMES.ai=t;if(![...$('theme').options].some(o=>o.value==='ai')){const o=document.createElement('option');o.value='ai';$('theme').appendChild(o)}$('theme').querySelector('option[value=ai]').textContent='AI: '+t.name;$('theme').value='ai';sync();render()});
 $('ai-m-b').onclick=()=>aiBusy($('ai-m-b'),$('ai-m-s'),()=>AI.generateModel($('ai-m-p').value),m=>{aiModel=m;mRender()});
 $('ai-mm-b').onclick=()=>{const st=$('ai-m-s'),b=$('ai-mm-b'),b1=$('ai-m-b');const left=AI.cooldownLeft();if(left>0){st.textContent='Free AI is limited to one request per 30s. Wait '+left+'s.';return}
 b.disabled=b1.disabled=true;const t0=Date.now();AI.generateModelMulti($('ai-m-p').value,{onStatus:x=>{st.textContent='Multi-pass: '+x+' ('+Math.round((Date.now()-t0)/1000)+'s)'}}).then(m=>{aiModel=m;mRender();st.textContent='Done in '+Math.round((Date.now()-t0)/1000)+'s ('+m.passes+' passes, '+m.prims.length+' parts).'}).catch(e=>{st.textContent='Could not generate: '+e.message}).finally(()=>{b.disabled=b1.disabled=false})};
+
+/* ---- engine ---- */
+const EN=window.FreeForgeEngine;let ePack=null;
+function eShow(r){const b=r.bible;const t=b.themeObj||F.THEMES[b.theme];const pv={cls:r.kit.cls,props:r.kit.props,children:r.kit.children.filter(c=>['HUD','Buttons','Dialog'].includes(c.props.Name))};$('e-stage').innerHTML=F.toHtml(pv,960,540);$('e-stage').firstChild.style.background='linear-gradient(135deg,'+t.bg+',#000)';
+TH.draw($('e-th'),{title:r.thumbSpec.title,subtitle:r.thumbSpec.subtitle,style:b.thumbStyle,model:r.model,glow:'#ffffff',seed:r.thumbSpec.seed});TH.drawIcon($('e-ic'),r.iconSpec);
+const c=$('e-3d').getContext('2d');c.clearRect(0,0,384,216);G3.render(c,r.model,384,216,35,-16,null,0);
+$('e-info').textContent='Style bible\n  genre: '+b.genre+'\n  UI theme: '+(b.aiTheme?'AI custom':b.theme)+'\n  palette: '+b.palette+'\n  thumbnail: '+b.thumbStyle+'\n  hero model: '+(r.model.name||b.model)+'\n  motion: '+b.motion+'\nFiles in the pack: '+Object.keys(r.files).length+' (+ thumbnail.png and icon.png)'}
+$('e-go').onclick=async()=>{const st=$('e-st');try{const b=EN.plan($('e-p').value);$('e-go').disabled=true;
+if($('e-ai').checked){const left=AI.cooldownLeft();if(left>0){st.textContent='Free AI is limited to one request per 30s. Wait '+left+'s. Building without AI theme.'}else{st.textContent='Asking the free AI for a theme (10-30s)...';try{b.themeObj=await AI.generateTheme(b.prompt);b.aiTheme=true}catch(e){st.textContent='AI theme skipped: '+e.message}}}
+const r=EN.build(b,{core:F,g3d:G3,anim:AN});ePack=r;eShow(r);$('e-zip').disabled=false;if(!/skipped|Wait/.test(st.textContent))st.textContent='Done. Genre: '+b.genre+'.'}catch(e){st.textContent='Could not generate: '+e.message}finally{$('e-go').disabled=false}};
+$('e-zip').onclick=()=>{if(!ePack)return;const files=Object.assign({},ePack.files);let n=2;const fin=()=>{if(--n)return;const z=EN.zip(files);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([z],{type:'application/zip'}));a.download=ePack.bible.name+'_FreeForgePack.zip';a.click()};
+const grab=(cv,nm)=>cv.toBlob(b=>b.arrayBuffer().then(ab=>{files[nm]=new Uint8Array(ab);fin()}));grab($('e-th'),'thumbnail.png');grab($('e-ic'),'icon.png')};
 /* ---- thumbnails ---- */
 const TH=window.FreeForgeThumb;
 for(const k in TH.STYLES){const o=document.createElement('option');o.value=k;o.textContent=TH.STYLES[k].name;$('t-style').appendChild(o)}
@@ -941,4 +1030,5 @@ function dlCanvas(c,name){c.toBlob(b=>{const a=document.createElement('a');a.hre
 $('dl-thumb').onclick=()=>{const c=document.createElement('canvas');c.width=1920;c.height=1080;TH.draw(c,{title:$('t-title').value,subtitle:$('t-sub').value,style:$('t-style').value,model:tModel(),glow:'#ffffff'});dlCanvas(c,'thumbnail.png')};
 $('dl-icon').onclick=()=>dlCanvas($('ic'),'icon.png');
 (function(){const h=location.hash.slice(1).split(',');if(h[0]==='thumb'){$('t-style').value=h[1]||'sunburst';$('t-model').value=h[2]||'sword';$('t-pal').value=h[3]||'fantasy';if(h[4])$('t-title').value=decodeURIComponent(h[4]);showPanel('thumb')}if(h[0]==='m3d'){if(h[1])$('mdl').value=h[1];if(h[2])$('pal').value=h[2];fixedYaw=+h[3]||30;mRender();showPanel('m3d')}if(h[0]==='anim'){$('apre').value=h[1]||'popIn';showPanel('anim')}})();
+(function(){const h=decodeURIComponent(location.hash.slice(1)).split('|');if(h[0]==='eng'){showPanel('eng');if(h[1])$('e-p').value=h[1];$('e-go').click()}})();
 </script></body></html>
