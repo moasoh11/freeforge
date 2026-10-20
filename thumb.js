@@ -15,6 +15,7 @@
     const W = canvas.width, H = canvas.height, ctx = canvas.getContext('2d'), st = STYLES[o.style] || STYLES.sunburst, r = rng(o.seed||5), k = W/1280;
     // background
     const g = ctx.createLinearGradient(0,0,W,H); g.addColorStop(0,st.bg[0]); g.addColorStop(1,st.bg[1]); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    if (o.bgImage) { const iw=o.bgImage.naturalWidth||o.bgImage.width, ih=o.bgImage.naturalHeight||o.bgImage.height, sc=Math.max(W/iw,H/ih); ctx.drawImage(o.bgImage,(W-iw*sc)/2,(H-ih*sc)/2,iw*sc,ih*sc); ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(0,0,W,H); }
     // rays
     ctx.save(); ctx.translate(W*0.62,H*0.55); const n=18; for (let i=0;i<n;i++){ const a=i/n*Math.PI*2; ctx.fillStyle=st.ray; ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,W,a,a+Math.PI/n*0.9); ctx.closePath(); ctx.fill(); } ctx.restore();
     if (st.grid) { ctx.strokeStyle='rgba(0,229,255,0.25)'; ctx.lineWidth=2*k; for(let i=0;i<14;i++){ const y=H*0.62+Math.pow(i/13,2)*H*0.38; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); } for(let i=-10;i<=10;i++){ ctx.beginPath(); ctx.moveTo(W*0.5+i*20*k,H*0.62); ctx.lineTo(W*0.5+i*160*k,H); ctx.stroke(); } }

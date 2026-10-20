@@ -41,7 +41,7 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
 <div class="tabs"><button data-t="lua">Luau</button><button data-t="xml">.rbxmx</button></div><pre id="code"></pre></main>
 
 <aside id="p-m3d" class="hid"><h1>3D Models</h1><small>Parametric models built from parts. Same geometry feeds the preview, the GLB and the Roblox export.</small>
-<div class="note" style="margin-top:12px"><b>AI model</b> (free AI designs the parts)<input type="text" id="ai-m-p" placeholder="e.g. a cute mushroom house" maxlength="120" style="margin-top:6px"><button class="dl" id="ai-m-b" style="margin-top:6px">Generate with AI</button><button class="dl" id="ai-mm-b" style="margin-top:6px" title="Plans the object, builds each section separately, then assembles. Slower, usually more recognizable.">Detailed multi-pass (slower)</button><div id="ai-m-s" style="margin-top:6px;font-size:12px"></div></div><label>Model</label><select id="mdl"></select><label>Palette</label><select id="pal"></select>
+<div class="note" style="margin-top:12px"><b>AI model</b> (free AI designs the parts)<input type="text" id="ai-m-p" placeholder="e.g. a cute mushroom house" maxlength="120" style="margin-top:6px"><button class="dl" id="ai-m-b" style="margin-top:6px">Generate with AI</button><button class="dl" id="ai-mm-b" style="margin-top:6px" title="Plans the object, builds each section separately, then assembles. Slower, usually more recognizable.">Detailed multi-pass (slower)</button><button class="dl alt" id="ai-mf-b" style="margin-top:6px" title="Builds all sections at once on our free Cloudflare server. Much faster, rougher results.">Fast multi-pass (rough)</button><div id="ai-m-s" style="margin-top:6px;font-size:12px"></div></div><label>Model</label><select id="mdl"></select><label>Palette</label><select id="pal"></select>
 <label>Accent color</label><input type="color" id="m-acc" value="#d9a441"><label>Scale: <span id="msv">1</span></label><input type="range" id="msc" min="0.5" max="3" step="0.1" value="1" style="width:100%">
 <label>Variation seed</label><input type="number" id="seed" value="7"><label class="chk"><input type="checkbox" id="spin" checked> Spin animation</label><label class="chk"><input type="checkbox" id="bob"> Bob animation</label>
 <label>Export</label><button class="dl" id="dl-glb">Download .glb (any 3D tool, Roblox 3D importer)</button><button class="dl alt" id="dl-mrb">Download .rbxmx (Parts model)</button><button class="dl alt" id="dl-mlua">Download Luau (builds + animates)</button>
@@ -54,7 +54,7 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
 <main id="m-anim" class="hid"><div id="astage" style="background:linear-gradient(135deg,#12121c,#000);width:960px;height:360px;border-radius:12px;position:relative;overflow:hidden"></div><pre id="acode"></pre></main>
 
 <aside id="p-thumb" class="hid"><h1>Thumbnails & Icons</h1><small>Game thumbnails and item icons from your 3D models. Exports PNG at 1920x1080 / 512x512.</small>
-<label>Title</label><input type="text" id="t-title" value="Sword Quest" maxlength="28"><label>Subtitle</label><input type="text" id="t-sub" value="New update!" maxlength="30">
+<div class="note" style="margin-top:0"><b>AI background</b> (free, Cloudflare Workers AI)<input type="text" id="t-aibg" placeholder="e.g. misty fantasy castle at sunset" maxlength="120" style="margin-top:6px"><button class="dl" id="t-aibg-b" style="margin-top:6px">Generate background</button><button class="dl alt" id="t-aibg-x" style="margin-top:6px">Remove</button><div id="t-aibg-s" style="margin-top:6px;font-size:12px"></div></div><label>Title</label><input type="text" id="t-title" value="Sword Quest" maxlength="28"><label>Subtitle</label><input type="text" id="t-sub" value="New update!" maxlength="30">
 <label>Style</label><select id="t-style"></select><label>Hero model</label><select id="t-model"></select><label>Palette</label><select id="t-pal"></select>
 <label>Icon rarity</label><select id="t-rar"><option value="#9aa3b5">Common</option><option value="#4ade80">Uncommon</option><option value="#38bdf8">Rare</option><option value="#c084fc" selected>Epic</option><option value="#fbbf24">Legendary</option></select>
 <button class="dl" id="dl-thumb">Download thumbnail PNG</button><button class="dl alt" id="dl-icon">Download icon PNG</button>
@@ -732,7 +732,7 @@ TweenService:Create(obj, TweenInfo.new(${d}, Enum.EasingStyle.${e}), { Backgroun
 (function (root) {
   'use strict';
   const ENDPOINT = 'https://text.pollinations.ai/openai';
-  let WORKER_URL = ''; // set after the Cloudflare Worker is deployed; enables parallel multi-pass
+  let WORKER_URL = 'https://freeforge-ai.moasoh-freeforge.workers.dev'; // set after the Cloudflare Worker is deployed; enables parallel multi-pass
 
   const MATS = ['Plastic','Neon','Wood','Metal','Glass'], TYPES = ['box','cyl','ball'];
   const FONTS = ['GothamBold','GothamMedium','FredokaOne','Fantasy','Code','SourceSansBold'];
@@ -758,6 +758,14 @@ TweenService:Create(obj, TweenInfo.new(${d}, Enum.EasingStyle.${e}), { Backgroun
     const r = await fetch(WORKER_URL + '/llm', { method:'POST', headers:{ 'content-type':'application/json' }, signal: signal || AbortSignal.timeout(60000), body: JSON.stringify({ system, user: String(user).slice(0, 400) }) });
     if (!r.ok) { let m = ''; try { m = (await r.json()).error; } catch (e) {} throw new Error(m || 'AI proxy error ' + r.status); }
     const j = await r.json(); if (!j.text) throw new Error('Empty AI answer'); return j.text;
+  }
+  async function generateImage(prompt, style, signal) {
+    const p = String(prompt || '').trim().slice(0, 200); if (p.length < 3) throw new Error('Describe the picture first');
+    if (!WORKER_URL) throw new Error('AI images are not available right now');
+    const r = await fetch(WORKER_URL + '/image', { method:'POST', headers:{ 'content-type':'application/json' }, signal: signal || AbortSignal.timeout(60000), body: JSON.stringify({ prompt: p, style: style || 'thumbnail' }) });
+    if (!r.ok) { let m = ''; try { m = (await r.json()).error; } catch (e) {} throw new Error(m || 'AI image error ' + r.status); }
+    const url = URL.createObjectURL(await r.blob());
+    return await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('Bad image')); im.src = url; });
   }
   function extractJson(text) {
     let t = String(text).replace(/```json|```/g, '');
@@ -796,7 +804,7 @@ Rules: coordinates are LOCAL to the section: (0,0,0) is the middle of the sectio
   async function generateModelMulti(prompt, opts) {
     opts = opts || {}; const onStatus = opts.onStatus || (() => {}), signal = opts.signal;
     const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe what to build');
-    const par = !!WORKER_URL; if (!par) await waitCooldown(onStatus); onStatus('planning');
+    const par = !!(WORKER_URL && opts.fast); if (!par) await waitCooldown(onStatus); onStatus('planning');
     const plan = extractJson(await (par ? askProxy : ask)(PLAN_SYSTEM, 'Object: ' + p, signal));
     const palette = (Array.isArray(plan.palette) ? plan.palette : []).map(c => hex(c, null)).filter(Boolean).slice(0, 6);
     const secs = (Array.isArray(plan.sections) ? plan.sections : []).slice(0, 6).map(sx => ({ name: String(sx.name || 'part').slice(0, 24), detail: String(sx.detail || '').slice(0, 160), center: vec(sx.center, -20, 20, [0, 4, 0]), size: vec(sx.size, 0.5, 24, [4, 4, 4]) }));
@@ -840,7 +848,7 @@ Rules: panel is a dark or light surface, panel2 slightly different, text must ha
     const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe the game style');
     return sanitizeTheme(extractJson(await ask(THEME_SYSTEM, 'Game style: ' + p, signal)));
   }
-  const api = { ask, extractJson, sanitizeModel, sanitizeTheme, generateModel, generateTheme, generateModelMulti, setWorker: u => { WORKER_URL = String(u || '').replace(/\/$/, ''); }, cooldownLeft, ENDPOINT };
+  const api = { ask, extractJson, sanitizeModel, sanitizeTheme, generateModel, generateTheme, generateModelMulti, generateImage, setWorker: u => { WORKER_URL = String(u || '').replace(/\/$/, ''); }, cooldownLeft, ENDPOINT };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FreeForgeAI = api;
 })(typeof window !== 'undefined' ? window : globalThis);
 </script><script>/* FreeForge thumbnails/icons: canvas compositor (browser). Uses FreeForge3D.render for the hero model. */
@@ -860,6 +868,7 @@ Rules: panel is a dark or light surface, panel2 slightly different, text must ha
     const W = canvas.width, H = canvas.height, ctx = canvas.getContext('2d'), st = STYLES[o.style] || STYLES.sunburst, r = rng(o.seed||5), k = W/1280;
     // background
     const g = ctx.createLinearGradient(0,0,W,H); g.addColorStop(0,st.bg[0]); g.addColorStop(1,st.bg[1]); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    if (o.bgImage) { const iw=o.bgImage.naturalWidth||o.bgImage.width, ih=o.bgImage.naturalHeight||o.bgImage.height, sc=Math.max(W/iw,H/ih); ctx.drawImage(o.bgImage,(W-iw*sc)/2,(H-ih*sc)/2,iw*sc,ih*sc); ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(0,0,W,H); }
     // rays
     ctx.save(); ctx.translate(W*0.62,H*0.55); const n=18; for (let i=0;i<n;i++){ const a=i/n*Math.PI*2; ctx.fillStyle=st.ray; ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,W,a,a+Math.PI/n*0.9); ctx.closePath(); ctx.fill(); } ctx.restore();
     if (st.grid) { ctx.strokeStyle='rgba(0,229,255,0.25)'; ctx.lineWidth=2*k; for(let i=0;i<14;i++){ const y=H*0.62+Math.pow(i/13,2)*H*0.38; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); } for(let i=-10;i<=10;i++){ ctx.beginPath(); ctx.moveTo(W*0.5+i*20*k,H*0.62); ctx.lineTo(W*0.5+i*160*k,H); ctx.stroke(); } }
@@ -1039,22 +1048,25 @@ function eShow(r){const b=r.bible;const t=b.themeObj||F.THEMES[b.theme];const pv
 TH.draw($('e-th'),{title:r.thumbSpec.title,subtitle:r.thumbSpec.subtitle,style:b.thumbStyle,model:r.model,glow:'#ffffff',seed:r.thumbSpec.seed});TH.drawIcon($('e-ic'),r.iconSpec);
 const c=$('e-3d').getContext('2d');c.clearRect(0,0,384,216);G3.render(c,r.model,384,216,35,-16,null,0);
 $('e-info').textContent='Style bible\n  genre: '+b.genre+'\n  UI theme: '+(b.aiTheme?'AI custom':b.theme)+'\n  palette: '+b.palette+'\n  thumbnail: '+b.thumbStyle+'\n  hero model: '+(r.model.name||b.model)+'\n  motion: '+b.motion+'\nFiles in the pack: '+Object.keys(r.files).length+' (+ thumbnail.png and icon.png)'}
+$('t-aibg-b').onclick=()=>{const st=$('t-aibg-s'),b=$('t-aibg-b');b.disabled=true;st.textContent='Generating (about 5s)...';AI.generateImage($('t-aibg').value,'thumbnail').then(im=>{tBg=im;tRender();st.textContent='Done. Only your typed text was sent to the free AI server.'}).catch(e=>{st.textContent='Could not generate: '+e.message}).finally(()=>{b.disabled=false})};
+$('t-aibg-x').onclick=()=>{tBg=null;tRender();$('t-aibg-s').textContent=''};
 $('e-go').onclick=async()=>{const st=$('e-st');try{const b=EN.plan($('e-p').value);$('e-go').disabled=true;
 if($('e-ai').checked){const left=AI.cooldownLeft();if(left>0){st.textContent='Free AI is limited to one request per 30s. Wait '+left+'s. Building without AI theme.'}else{st.textContent='Asking the free AI for a theme (10-30s)...';try{b.themeObj=await AI.generateTheme(b.prompt);b.aiTheme=true}catch(e){st.textContent='AI theme skipped: '+e.message}}}
 const r=EN.build(b,{core:F,g3d:G3,anim:AN});ePack=r;eShow(r);$('e-zip').disabled=false;if(!/skipped|Wait/.test(st.textContent))st.textContent='Done. Genre: '+b.genre+'.'}catch(e){st.textContent='Could not generate: '+e.message}finally{$('e-go').disabled=false}};
 $('e-zip').onclick=()=>{if(!ePack)return;const files=Object.assign({},ePack.files);let n=2;const fin=()=>{if(--n)return;const z=EN.zip(files);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([z],{type:'application/zip'}));a.download=ePack.bible.name+'_FreeForgePack.zip';a.click()};
 const grab=(cv,nm)=>cv.toBlob(b=>b.arrayBuffer().then(ab=>{files[nm]=new Uint8Array(ab);fin()}));grab($('e-th'),'thumbnail.png');grab($('e-ic'),'icon.png')};
+$('ai-mf-b').onclick=()=>{const st=$('ai-m-s'),bs=['ai-m-b','ai-mm-b','ai-mf-b'].map($);bs.forEach(b=>b.disabled=true);const t0=Date.now();AI.generateModelMulti($('ai-m-p').value,{fast:true,onStatus:x=>{st.textContent='Fast multi-pass: '+x}}).then(m=>{aiModel=m;mRender();st.textContent='Done in '+((Date.now()-t0)/1000).toFixed(1)+'s ('+m.passes+' passes, '+m.prims.length+' parts). Fast mode is lower quality than the detailed button.'}).catch(e=>{st.textContent='Could not generate: '+e.message}).finally(()=>bs.forEach(b=>b.disabled=false))};
 /* ---- thumbnails ---- */
 const TH=window.FreeForgeThumb;
 for(const k in TH.STYLES){const o=document.createElement('option');o.value=k;o.textContent=TH.STYLES[k].name;$('t-style').appendChild(o)}
 for(const k in G3.MODELS){const o=document.createElement('option');o.value=k;o.textContent=G3.MODELS[k].name;$('t-model').appendChild(o)}
 for(const k in G3.PALETTES){const o=document.createElement('option');o.value=k;o.textContent=k;$('t-pal').appendChild(o)}
 function tModel(){return G3.buildModel({model:$('t-model').value,palette:$('t-pal').value,spin:false})}
-function tRender(){const m=tModel();TH.draw($('tc'),{title:$('t-title').value,subtitle:$('t-sub').value,style:$('t-style').value,model:m,glow:'#ffffff'});TH.drawIcon($('ic'),{model:m,rarity:$('t-rar').value})}
+let tBg=null;function tRender(){const m=tModel();TH.draw($('tc'),{bgImage:tBg,title:$('t-title').value,subtitle:$('t-sub').value,style:$('t-style').value,model:m,glow:'#ffffff'});TH.drawIcon($('ic'),{model:m,rarity:$('t-rar').value})}
 ['t-title','t-sub','t-style','t-model','t-pal','t-rar'].forEach(i=>$(i).oninput=tRender);
 function dlCanvas(c,name){c.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click()})}
 $('dl-thumb').onclick=()=>{const c=document.createElement('canvas');c.width=1920;c.height=1080;TH.draw(c,{title:$('t-title').value,subtitle:$('t-sub').value,style:$('t-style').value,model:tModel(),glow:'#ffffff'});dlCanvas(c,'thumbnail.png')};
 $('dl-icon').onclick=()=>dlCanvas($('ic'),'icon.png');
 (function(){const h=location.hash.slice(1).split(',');if(h[0]==='thumb'){$('t-style').value=h[1]||'sunburst';$('t-model').value=h[2]||'sword';$('t-pal').value=h[3]||'fantasy';if(h[4])$('t-title').value=decodeURIComponent(h[4]);showPanel('thumb')}if(h[0]==='m3d'){if(h[1])$('mdl').value=h[1];if(h[2])$('pal').value=h[2];fixedYaw=+h[3]||30;mRender();showPanel('m3d')}if(h[0]==='anim'){$('apre').value=h[1]||'popIn';showPanel('anim')}})();
-(function(){const h=decodeURIComponent(location.hash.slice(1)).split('|');if(h[0]==='eng'){showPanel('eng');if(h[1])$('e-p').value=h[1];$('e-go').click()}})();
+(function(){const h=decodeURIComponent(location.hash.slice(1)).split('|');if(h[0]==='thumbai'){showPanel('thumb');$('t-aibg').value=h[1]||'misty fantasy castle at sunset';$('t-aibg-b').click()}if(h[0]==='eng'){showPanel('eng');if(h[1])$('e-p').value=h[1];$('e-go').click()}})();
 </script></body></html>

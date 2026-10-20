@@ -2,7 +2,7 @@
 (function (root) {
   'use strict';
   const ENDPOINT = 'https://text.pollinations.ai/openai';
-  let WORKER_URL = ''; // set after the Cloudflare Worker is deployed; enables parallel multi-pass
+  let WORKER_URL = 'https://freeforge-ai.moasoh-freeforge.workers.dev'; // set after the Cloudflare Worker is deployed; enables parallel multi-pass
 
   const MATS = ['Plastic','Neon','Wood','Metal','Glass'], TYPES = ['box','cyl','ball'];
   const FONTS = ['GothamBold','GothamMedium','FredokaOne','Fantasy','Code','SourceSansBold'];
@@ -28,6 +28,14 @@
     const r = await fetch(WORKER_URL + '/llm', { method:'POST', headers:{ 'content-type':'application/json' }, signal: signal || AbortSignal.timeout(60000), body: JSON.stringify({ system, user: String(user).slice(0, 400) }) });
     if (!r.ok) { let m = ''; try { m = (await r.json()).error; } catch (e) {} throw new Error(m || 'AI proxy error ' + r.status); }
     const j = await r.json(); if (!j.text) throw new Error('Empty AI answer'); return j.text;
+  }
+  async function generateImage(prompt, style, signal) {
+    const p = String(prompt || '').trim().slice(0, 200); if (p.length < 3) throw new Error('Describe the picture first');
+    if (!WORKER_URL) throw new Error('AI images are not available right now');
+    const r = await fetch(WORKER_URL + '/image', { method:'POST', headers:{ 'content-type':'application/json' }, signal: signal || AbortSignal.timeout(60000), body: JSON.stringify({ prompt: p, style: style || 'thumbnail' }) });
+    if (!r.ok) { let m = ''; try { m = (await r.json()).error; } catch (e) {} throw new Error(m || 'AI image error ' + r.status); }
+    const url = URL.createObjectURL(await r.blob());
+    return await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('Bad image')); im.src = url; });
   }
   function extractJson(text) {
     let t = String(text).replace(/```json|```/g, '');
@@ -66,7 +74,7 @@ Rules: coordinates are LOCAL to the section: (0,0,0) is the middle of the sectio
   async function generateModelMulti(prompt, opts) {
     opts = opts || {}; const onStatus = opts.onStatus || (() => {}), signal = opts.signal;
     const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe what to build');
-    const par = !!WORKER_URL; if (!par) await waitCooldown(onStatus); onStatus('planning');
+    const par = !!(WORKER_URL && opts.fast); if (!par) await waitCooldown(onStatus); onStatus('planning');
     const plan = extractJson(await (par ? askProxy : ask)(PLAN_SYSTEM, 'Object: ' + p, signal));
     const palette = (Array.isArray(plan.palette) ? plan.palette : []).map(c => hex(c, null)).filter(Boolean).slice(0, 6);
     const secs = (Array.isArray(plan.sections) ? plan.sections : []).slice(0, 6).map(sx => ({ name: String(sx.name || 'part').slice(0, 24), detail: String(sx.detail || '').slice(0, 160), center: vec(sx.center, -20, 20, [0, 4, 0]), size: vec(sx.size, 0.5, 24, [4, 4, 4]) }));
@@ -110,6 +118,6 @@ Rules: panel is a dark or light surface, panel2 slightly different, text must ha
     const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe the game style');
     return sanitizeTheme(extractJson(await ask(THEME_SYSTEM, 'Game style: ' + p, signal)));
   }
-  const api = { ask, extractJson, sanitizeModel, sanitizeTheme, generateModel, generateTheme, generateModelMulti, setWorker: u => { WORKER_URL = String(u || '').replace(/\/$/, ''); }, cooldownLeft, ENDPOINT };
+  const api = { ask, extractJson, sanitizeModel, sanitizeTheme, generateModel, generateTheme, generateModelMulti, generateImage, setWorker: u => { WORKER_URL = String(u || '').replace(/\/$/, ''); }, cooldownLeft, ENDPOINT };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FreeForgeAI = api;
 })(typeof window !== 'undefined' ? window : globalThis);
