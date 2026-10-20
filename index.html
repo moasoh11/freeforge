@@ -720,11 +720,11 @@ TweenService:Create(obj, TweenInfo.new(${d}, Enum.EasingStyle.${e}), { Backgroun
   async function ask(system, user, signal) {
     if (cooldownLeft() > 0) throw new Error('The free AI allows one request every 30 seconds. Try again in ' + cooldownLeft() + 's.');
     lastCall = Date.now();
-    const r = await fetch(ENDPOINT, { method:'POST', headers:{ 'content-type':'application/json' }, signal,
-      body: JSON.stringify({ model:'openai', temperature:0.7, max_tokens:6000, messages:[{ role:'system', content:system }, { role:'user', content:user }] }) });
+    const r = await fetch(ENDPOINT, { method:'POST', headers:{ 'content-type':'application/json' }, signal: signal || (typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(90000) : undefined),
+      body: JSON.stringify({ model:'openai', temperature:0.7, max_tokens:6000, reasoning_effort:'low', messages:[{ role:'system', content:system + '\nThink very briefly. Output the JSON immediately.' }, { role:'user', content:user }] }) });
     if (r.status === 402 || r.status === 429) { const ra = +r.headers.get('retry-after') || 30; lastCall = Date.now() - COOLDOWN_MS + ra * 1000; throw new Error('The free AI is rate limited right now. Try again in ' + ra + 's.'); }
     if (!r.ok) throw new Error('AI service error ' + r.status);
-    const j = await r.json(); const c = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+    const j = await r.json(); const m0 = j.choices && j.choices[0] && j.choices[0].message; const c = m0 && (m0.content || (m0.reasoning && m0.reasoning.indexOf('{') >= 0 ? m0.reasoning : ''));
     if (!c) throw new Error('Empty AI answer');
     return c;
   }
@@ -753,6 +753,46 @@ Example mushroom: {"name":"Mushroom","parts":[{"t":"cyl","pos":[0,1.5,0],"size":
     const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe what to build');
     return sanitizeModel(extractJson(await ask(MODEL_SYSTEM, 'Build: ' + p, signal)));
   }
+    // ---- multi-pass: plan -> build each section -> assemble ----
+  const PLAN_SYSTEM = `You are a 3D modeler planning a low-poly Roblox model made of primitive parts. Reply with ONLY one JSON object, no prose:
+{"name":"Short Name","palette":["#hex","#hex","#hex","#hex"],"sections":[{"name":"blade","detail":"what this section looks like and which parts it needs","center":[x,y,z],"size":[w,h,d]}]}
+Rules: studs, Y up, the whole model sits on y=0, centered on x=0 and z=0, total height 3 to 16. Use 3 to 6 sections that together cover the whole object with no big gaps; "center" is the middle of the section's box and "size" is its box. Sections may overlap slightly so they connect.`;
+  const SECTION_SYSTEM = `You build ONE section of a low-poly Roblox model from primitive parts. Reply with ONLY one JSON object, no prose:
+{"parts":[{"t":"box|cyl|ball","pos":[x,y,z],"size":[x,y,z],"rot":[rx,ry,rz],"color":"#rrggbb","mat":"Plastic|Neon|Wood|Metal|Glass"}]}
+Rules: coordinates are LOCAL to the section: (0,0,0) is the middle of the section box, and every part must stay inside the box you are given. "cyl" is upright (size = [diameter, height, diameter]), "ball" size = [d,d,d], rot in degrees. Use 5 to 14 parts with real detail (trim, edges, handles, windows, studs, bevels made from thin rotated boxes). Use only the given palette colors (Neon only for glowing bits). Parts must touch their neighbours.`;
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  async function waitCooldown(onStatus) { let l; while ((l = cooldownLeft()) > 0) { if (onStatus) onStatus('waiting ' + l + 's for the free AI rate limit'); await sleep(Math.min(l, 5) * 1000 + 200); } }
+  async function generateModelMulti(prompt, opts) {
+    opts = opts || {}; const onStatus = opts.onStatus || (() => {}), signal = opts.signal;
+    const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe what to build');
+    await waitCooldown(onStatus); onStatus('planning');
+    const plan = extractJson(await ask(PLAN_SYSTEM, 'Object: ' + p, signal));
+    const palette = (Array.isArray(plan.palette) ? plan.palette : []).map(c => hex(c, null)).filter(Boolean).slice(0, 6);
+    const secs = (Array.isArray(plan.sections) ? plan.sections : []).slice(0, 6).map(sx => ({ name: String(sx.name || 'part').slice(0, 24), detail: String(sx.detail || '').slice(0, 160), center: vec(sx.center, -20, 20, [0, 4, 0]), size: vec(sx.size, 0.5, 24, [4, 4, 4]) }));
+    if (!secs.length) throw new Error('AI plan had no sections');
+    const prims = [];
+    for (let i = 0; i < secs.length; i++) {
+      const sec = secs[i]; await waitCooldown(onStatus); onStatus('building ' + sec.name + ' (' + (i + 1) + '/' + secs.length + ')');
+      let j; try { j = extractJson(await ask(SECTION_SYSTEM, `Whole object: ${p}\nPalette: ${palette.join(', ') || 'your choice'}\nSection: ${sec.name}. ${sec.detail}\nSection box size: ${sec.size.join(' x ')} (local coords from -${(sec.size[0]/2).toFixed(1)} to ${(sec.size[0]/2).toFixed(1)} in x, same idea for y and z).`, signal)); } catch (e) { if (/rate limited/.test(e.message)) { await waitCooldown(onStatus); i--; continue; } continue; }
+      const raw = (Array.isArray(j.parts) ? j.parts : []).slice(0, 16).map(q => ({ t: TYPES.includes(q.t) ? q.t : 'box', pos: vec(q.pos, -30, 30, [0, 0, 0]), size: vec(q.size, 0.05, 30, [1, 1, 1]), rot: vec(q.rot, -360, 360, [0, 0, 0]), color: hex(q.color, palette[0] || '#c9ced6'), mat: MATS.includes(q.mat) ? q.mat : 'Plastic' }));
+      if (!raw.length) { if (!sec.retried) { sec.retried = 1; i--; } continue; }
+      // auto-fit: scale the section's parts uniformly so their bounding box fills the planned box
+      const lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
+      raw.forEach(q => { for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], q.pos[k] - q.size[k] / 2); hi[k] = Math.max(hi[k], q.pos[k] + q.size[k] / 2); } });
+      let f = 1e9; for (let k = 0; k < 3; k++) { const ext = Math.max(hi[k] - lo[k], 0.05); f = Math.min(f, sec.size[k] / ext); }
+      f = Math.max(0.2, Math.min(f, 40));
+      const mid = [0, 1, 2].map(k => (lo[k] + hi[k]) / 2);
+      raw.forEach(q => { prims.push({ t: q.t, pos: [0, 1, 2].map(k => (q.pos[k] - mid[k]) * f + sec.center[k]), size: q.size.map(v => Math.max(0.1, v * f)), rot: q.rot, color: q.color, mat: q.mat }); });
+    }
+    if (!prims.length) throw new Error('AI built no parts');
+    // normalise overall scale so the object's longest side is about 8 studs
+    { const lo = [1e9,1e9,1e9], hi = [-1e9,-1e9,-1e9]; prims.forEach(q => { for (let k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], q.pos[k]-q.size[k]/2); hi[k] = Math.max(hi[k], q.pos[k]+q.size[k]/2); } });
+      const ext = Math.max(hi[0]-lo[0], hi[1]-lo[1], hi[2]-lo[2], 0.1), g = Math.max(0.25, Math.min(8 / ext, 20));
+      prims.forEach(q => { for (let k = 0; k < 3; k++) { q.pos[k] = (q.pos[k] - (lo[k]+hi[k])/2) * g; q.size[k] = Math.max(0.2, q.size[k] * g); } }); }
+    // drop the model onto y=0 and center it
+    let minY = 1e9; prims.forEach(q => { minY = Math.min(minY, q.pos[1] - q.size[1] / 2); }); prims.forEach(q => { q.pos[1] -= minY; });
+    return { name: String(plan.name || 'AI Model').replace(/[^A-Za-z0-9 ]/g, '').slice(0, 32) || 'AI Model', prims: prims.slice(0, 120), spin: true, bob: false, passes: secs.length + 1 };
+  }
   const THEME_SYSTEM = `You design game UI color themes. Reply with ONLY one JSON object, no prose:
 {"name":"Theme Name","bg":"#hex","panel":"#hex","panel2":"#hex","accent":"#hex","accent2":"#hex","text":"#hex","muted":"#hex","good":"#hex","bad":"#hex","radius":0-24,"stroke":1-4,"font":"GothamBold|GothamMedium|FredokaOne|Fantasy|Code"}
 Rules: panel is a dark or light surface, panel2 slightly different, text must have strong contrast on panel, accent is the signature color, good is green-ish, bad is red-ish.`;
@@ -765,7 +805,7 @@ Rules: panel is a dark or light surface, panel2 slightly different, text must ha
     const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe the game style');
     return sanitizeTheme(extractJson(await ask(THEME_SYSTEM, 'Game style: ' + p, signal)));
   }
-  const api = { ask, extractJson, sanitizeModel, sanitizeTheme, generateModel, generateTheme, cooldownLeft, ENDPOINT };
+  const api = { ask, extractJson, sanitizeModel, sanitizeTheme, generateModel, generateTheme, generateModelMulti, cooldownLeft, ENDPOINT };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FreeForgeAI = api;
 })(typeof window !== 'undefined' ? window : globalThis);
 </script><script>/* FreeForge thumbnails/icons: canvas compositor (browser). Uses FreeForge3D.render for the hero model. */
