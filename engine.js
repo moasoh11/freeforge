@@ -36,7 +36,9 @@
 
   // Merge AI choices (already validated against our menus) over a keyword plan.
   function hue(hx) { const r = parseInt(hx.substr(1, 2), 16) / 255, g = parseInt(hx.substr(3, 2), 16) / 255, bl = parseInt(hx.substr(5, 2), 16) / 255, mx = Math.max(r, g, bl), mn = Math.min(r, g, bl), d = mx - mn; if (d < 0.12) return null; let h = mx === r ? ((g - bl) / d) % 6 : mx === g ? (bl - r) / d + 2 : (r - g) / d + 4; h = h * 60; return h < 0 ? h + 360 : h; }
+  const HERO_KW = [[/sword|blade|knight|dragon/,'sword'],[/ship|pirate|boat|sail/,'ship'],[/\bcar\b|racing|drift|kart/,'car'],[/robot|mech|android/,'robot'],[/\bpet\b|cat|dog|bunny/,'pet'],[/potion|alchemy|witch/,'potion'],[/treasure|chest|loot/,'chest'],[/tower|obby|parkour/,'tower'],[/house|cabin|castle|home/,'house'],[/tree|forest|jungle/,'tree'],[/mushroom/,'mushroom'],[/coin|tycoon|cash|money/,'coin'],[/crystal|gem|mine/,'crystal'],[/shield|defen[cs]e/,'shield']];
   function applyAi(bible, over) {
+    if (over && over.model) { const q = String(bible.prompt || '').toLowerCase(); const h = HERO_KW.find(x => x[0].test(q)); if (h) over = Object.assign({}, over, { model: h[1] }); }
     over = over || {}; const g = GENRES.find(x => x.id === over.genre);
     const b = Object.assign({}, bible);
     if (g) { b.genre = g.id; b.theme = g.theme; b.thumbStyle = g.thumb; b.palette = g.pal; b.model = g.model; b.motion = g.anim; b.accent = g.accent; b.accent2 = g.accent2; }
