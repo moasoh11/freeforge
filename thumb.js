@@ -5,6 +5,8 @@
     sunburst: { name:'Sunburst', bg:['#ffb347','#ff5e62'], ray:'rgba(255,255,255,0.16)', t0:'#fff6b0', t1:'#ffb300', stroke:'#2a1200' },
     neon:     { name:'Neon Night', bg:['#1a0b3b','#050b1f'], ray:'rgba(0,229,255,0.12)', t0:'#9dfcff', t1:'#00b7ff', stroke:'#04122a', grid:'#00e5ff' },
     candy:    { name:'Candy', bg:['#ffd1ec','#b79bff'], ray:'rgba(255,255,255,0.35)', t0:'#ffffff', t1:'#ff7ac6', stroke:'#5b1c66' },
+    ocean:    { name:'Ocean', bg:['#0b4f8a','#031a33'], ray:'rgba(120,220,255,0.14)', t0:'#ffffff', t1:'#5ee0ff', stroke:'#021326' },
+    forest:   { name:'Forest', bg:['#2f7a3a','#0b2a14'], ray:'rgba(200,255,150,0.14)', t0:'#fffbd0', t1:'#9be05a', stroke:'#0b2210' },
     dark:     { name:'Dark Fantasy', bg:['#2b1230','#07070c'], ray:'rgba(255,122,69,0.14)', t0:'#ffe2a8', t1:'#e0892f', stroke:'#120708', embers:true }
   };
   function rng(seed){ let s=seed>>>0||1; return ()=>((s=(s*1664525+1013904223)>>>0)/4294967296); }

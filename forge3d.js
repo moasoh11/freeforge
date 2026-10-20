@@ -5,6 +5,8 @@
     fantasy: { a:'#c9ced6', b:'#8a5a2b', c:'#d9a441', d:'#4f9d3a', e:'#b0472f', glow:'#7be0ff' },
     neon:    { a:'#1d2236', b:'#2e3558', c:'#00e5ff', d:'#3dff8b', e:'#ff3df2', glow:'#00e5ff' },
     candy:   { a:'#ffd1e8', b:'#ff8fc4', c:'#ffe066', d:'#7be0a8', e:'#9a7bff', glow:'#ffffff' },
+    ocean:   { a:'#e8f4ff', b:'#7a4a22', c:'#ffd24a', d:'#2a9d8f', e:'#d94a3a', glow:'#5ee0ff' },
+    forest:  { a:'#d9c9a0', b:'#6b4423', c:'#e6c15a', d:'#3f9a45', e:'#b5532f', glow:'#b6ff6a' },
     dark:    { a:'#3a3f4b', b:'#262a33', c:'#b8892f', d:'#2f5d3a', e:'#8c2f39', glow:'#ff7a45' }
   };
   const hex2rgb = h => { h=h.replace('#',''); return [0,2,4].map(i=>parseInt(h.substr(i,2),16)/255); };
@@ -43,6 +45,21 @@
       for (let i=0;i<8;i++){ const a=i/8*6.283; o.push(P('box',[Math.cos(a)*2.3,11.2,Math.sin(a)*2.3],[0.9,1.2,0.9],c.a,{ rot:[0,-a*57.3,0] })); }
       o.push(P('cyl',[0,12.6,0],[3.2,1.6,3.2],c.e,{})); o.push(P('cyl',[0,14,0],[0.25,3,0.25],c.b,{})); o.push(P('box',[0.7,14.8,0],[1.4,0.9,0.1],c.c,{}));
       o.push(P('box',[0,1.4,2.15],[1.4,2.8,0.2],c.b,{ mat:'Wood' })); o.push(P('box',[0,6.5,2.2],[0.7,1.6,0.15],c.glow,{ mat:'Neon' })); return o; } },
+    ship: { name:'Pirate ship', build(p) { const c=p.pal, o=[ P('box',[0,1.2,0],[4,1.6,10],c.b,{ mat:'Wood' }), P('box',[0,1.9,-4.6],[3.6,1.6,1.6],c.b,{ mat:'Wood' }), P('box',[0,0.5,4.8],[2.6,1,2],c.b,{ mat:'Wood', rot:[-20,0,0] }),
+      P('cyl',[0,6,-0.5],[0.35,9,0.35],c.b,{ mat:'Wood' }), P('box',[0,6.4,-0.2],[0.12,4.2,3.6],c.a,{}), P('box',[0,3.2,-0.2],[0.14,0.5,3.8],c.e,{}), P('box',[0,10.7,-0.4],[0.1,0.8,1.3],c.e,{}), P('ball',[0,11.3,-0.5],[0.5,0.5,0.5],c.c,{ mat:'Metal' }),
+      P('box',[0,1.5,0],[4.2,0.25,10.2],c.c,{ mat:'Metal' }) ]; [-1,1].forEach(s=>{ o.push(P('cyl',[s*2.1,1.3,1],[0.5,0.5,0.5],c.glow,{ mat:'Neon', rot:[0,0,90] })); o.push(P('cyl',[s*2.1,1.3,-1.4],[0.5,0.5,0.5],c.glow,{ mat:'Neon', rot:[0,0,90] })); }); return o.map(m=>{ m.pos[1]+=0.2; return m; }); } },
+    car: { name:'Race car', build(p) { const c=p.pal, o=[ P('box',[0,1.1,0],[3.2,0.9,7],c.e,{ mat:'Metal' }), P('box',[0,1.8,-0.3],[2.6,0.8,3],c.glow,{ mat:'Glass' }), P('box',[0,1.45,2.6],[3,0.3,1.6],c.e,{ mat:'Metal' }), P('box',[0,1.3,-3.3],[3.2,0.25,0.9],c.e,{ mat:'Metal' }),
+      P('box',[1.2,2.0,-3.3],[0.15,1,0.15],c.a,{}), P('box',[-1.2,2.0,-3.3],[0.15,1,0.15],c.a,{}), P('box',[0,2.5,-3.3],[3.2,0.2,0.9],c.e,{ mat:'Metal' }), P('box',[0,0.95,3.55],[2.4,0.2,0.1],c.glow,{ mat:'Neon' }) ];
+      [[-1.75,2.3],[1.75,2.3],[-1.75,-2.3],[1.75,-2.3]].forEach(w=>{ o.push(P('cyl',[w[0],0.8,w[1]],[1.6,0.7,1.6],c.a,{ rot:[0,0,90] })); o.push(P('cyl',[w[0]+(w[0]>0?0.36:-0.36),0.8,w[1]],[0.9,0.1,0.9],c.c,{ mat:'Metal', rot:[0,0,90] })); }); return o; } },
+    robot: { name:'Robot', build(p) { const c=p.pal; return [ P('box',[0,3.2,0],[3,3.2,2],c.a,{ mat:'Metal' }), P('box',[0,5.6,0],[2.2,1.8,2],c.a,{ mat:'Metal' }), P('box',[0,5.7,1.01],[1.6,0.5,0.1],c.glow,{ mat:'Neon' }), P('cyl',[0,6.9,0],[0.15,1,0.15],c.c,{ mat:'Metal' }), P('ball',[0,7.5,0],[0.5,0.5,0.5],c.e,{ mat:'Neon' }),
+      P('box',[-2.2,3.4,0],[0.9,2.8,0.9],c.b,{ mat:'Metal' }), P('box',[2.2,3.4,0],[0.9,2.8,0.9],c.b,{ mat:'Metal' }), P('box',[-0.8,0.9,0],[1,1.8,1],c.b,{ mat:'Metal' }), P('box',[0.8,0.9,0],[1,1.8,1],c.b,{ mat:'Metal' }),
+      P('box',[0,3.6,1.01],[1.6,1.2,0.1],c.glow,{ mat:'Neon' }), P('box',[0,0.15,0],[3.2,0.3,2.4],c.b,{ mat:'Metal' }) ]; } },
+    shield: { name:'Shield', build(p) { const c=p.pal; return [ P('cyl',[0,3,0],[5,0.5,5],c.a,{ mat:'Metal', rot:[90,0,0] }), P('cyl',[0,3,0.2],[4.2,0.5,4.2],c.e,{ mat:'Metal', rot:[90,0,0] }), P('cyl',[0,3,0.45],[1.6,0.5,1.6],c.c,{ mat:'Metal', rot:[90,0,0] }), P('ball',[0,3,0.7],[0.7,0.7,0.7],c.glow,{ mat:'Neon' }),
+      P('box',[0,3,0.35],[0.5,4.6,0.2],c.c,{ mat:'Metal' }), P('box',[0,3,0.35],[4.6,0.5,0.2],c.c,{ mat:'Metal' }), P('box',[0,0.3,0],[1.6,0.6,0.8],c.b,{ mat:'Wood' }) ]; } },
+    mushroom: { name:'Mushroom house', build(p) { const c=p.pal, o=[ P('cyl',[0,2,0],[3.4,4,3.4],c.a,{}), P('ball',[0,5,0],[8,5,8],c.e,{}), P('box',[0,1.1,1.65],[1.2,2.2,0.2],c.b,{ mat:'Wood' }), P('box',[1.2,2.6,1.6],[0.9,0.9,0.15],c.glow,{ mat:'Neon' }) ];
+      [[-1.8,6.2,1.8],[2.4,6.4,-0.8],[0.2,7.2,2.4],[-2.4,5.8,-1.6]].forEach(s=>o.push(P('ball',[s[0],s[1],s[2]],[1.2,0.5,1.2],c.a,{}))); return o; } },
+    pet: { name:'Pet', build(p) { const c=p.pal; return [ P('ball',[0,1.6,0],[3.2,3,3.6],c.b,{}), P('ball',[0,3.5,1.4],[2.6,2.4,2.4],c.b,{}), P('ball',[-0.7,3.7,2.5],[0.4,0.4,0.4],c.a,{ mat:'Neon' }), P('ball',[0.7,3.7,2.5],[0.4,0.4,0.4],c.a,{ mat:'Neon' }), P('ball',[0,3.2,2.65],[0.45,0.35,0.35],c.e,{}),
+      P('ball',[-0.9,4.9,1.2],[0.8,1.3,0.5],c.b,{}), P('ball',[0.9,4.9,1.2],[0.8,1.3,0.5],c.b,{}), P('ball',[0,1.2,-1.9],[0.9,0.9,1.4],c.c,{}), P('ball',[-0.9,0.4,1],[0.9,0.8,1.2],c.b,{}), P('ball',[0.9,0.4,1],[0.9,0.8,1.2],c.b,{}) ]; } },
     coin: { name:'Coin', build(p) { const c=p.pal; return [ P('cyl',[0,1.6,0],[3,0.35,3],c.c,{ mat:'Metal', rot:[90,0,0] }), P('cyl',[0,1.6,0],[2.2,0.4,2.2],c.glow,{ mat:'Neon', rot:[90,0,0] }), P('box',[0,1.6,0.2],[0.4,1.4,0.1],c.c,{ mat:'Metal' }) ]; } }
   };
   function mix(a,b,k){ const x=hex2rgb(a), y=hex2rgb(b); return '#'+x.map((v,i)=>Math.round((v+(y[i]-v)*k)*255).toString(16).padStart(2,'0')).join(''); }

@@ -6,13 +6,18 @@
   'use strict';
   const GENRES = [
     { id:'horror',    kw:/horror|spooky|haunt|scary|zombie|ghost|dark|halloween|creep|nightmare/, theme:'medieval', thumb:'dark',    pal:'dark',    model:'crate',   anim:'shake',   accent:'#ff5a3d', accent2:'#8c2f39' },
+    { id:'mech',      kw:/mech|robot|android|battle bot|titan|factory bot|engineer/, theme:'scifi', thumb:'neon', pal:'neon', model:'robot', anim:'pulse', accent:'#4df2c8', accent2:'#ff7a2f' },
     { id:'scifi',     kw:/sci-?fi|space|robot|cyber|galaxy|alien|laser|mech|futur|neon city|station/, theme:'scifi', thumb:'neon', pal:'neon', model:'crystal', anim:'glow', accent:'#4df2c8', accent2:'#3d8bff' },
-    { id:'cute',      kw:/cute|pet|candy|sweet|bakery|cake|kawaii|bunny|cat|dog|rainbow|simulator|garden|pastel/, theme:'candy', thumb:'candy', pal:'candy', model:'potion', anim:'bounce', accent:'#ff5fa8', accent2:'#7a5cff' },
+    { id:'cute',      kw:/cute|pet|candy|sweet|bakery|cake|kawaii|bunny|cat|dog|rainbow|simulator|garden|pastel/, theme:'candy', thumb:'candy', pal:'candy', model:'pet', anim:'bounce', accent:'#ff5fa8', accent2:'#7a5cff' },
+    { id:'pirate',    kw:/pirate|ship|sail|ocean|sea|island|treasure|fish|beach|boat|naval/, theme:'ocean', thumb:'ocean', pal:'ocean', model:'ship', anim:'bounce', accent:'#5ee0ff', accent2:'#ffd24a' },
+    { id:'racing',    kw:/rac(e|ing)|car|drift|drive|speedway|kart|vehicle|truck|street/, theme:'neon', thumb:'neon', pal:'neon', model:'car', anim:'slideIn', accent:'#ff3d5a', accent2:'#ffd23d' },
+    { id:'combat',    kw:/battle|fight|pvp|arena|war|shield|defen[cs]e|army|survival|royale|shooter/, theme:'medieval', thumb:'dark', pal:'fantasy', model:'shield', anim:'shake', accent:'#e0b04a', accent2:'#c2392e' },
+    { id:'nature',    kw:/farm|forest|nature|garden|camp|animal|zoo|jungle|village|cozy|mushroom|harvest/, theme:'forest', thumb:'forest', pal:'forest', model:'mushroom', anim:'popIn', accent:'#9be05a', accent2:'#e6c15a' },
     { id:'fantasy',   kw:/fantasy|medieval|sword|dragon|knight|kingdom|rpg|magic|wizard|castle|quest|dungeon|elf/, theme:'medieval', thumb:'sunburst', pal:'fantasy', model:'sword', anim:'popIn', accent:'#e0b04a', accent2:'#b5532f' },
     { id:'tycoon',    kw:/tycoon|factory|shop|store|cash|money|business|empire|restaurant|city|mine/, theme:'neon', thumb:'sunburst', pal:'fantasy', model:'chest', anim:'slideIn', accent:'#3dff8b', accent2:'#ffd23d' },
     { id:'obby',      kw:/obby|parkour|race|speed|run|tower of|climb|adventure/, theme:'light', thumb:'sunburst', pal:'candy', model:'tower', anim:'pulse', accent:'#2f8bff', accent2:'#ff7a2f' }
   ];
-  const FALLBACK = GENRES[3];
+  const FALLBACK = GENRES.find(g => g.id === 'fantasy');
   function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
   const safe = s => String(s || 'FreeForge').replace(/[^A-Za-z0-9 ]/g, '').trim().replace(/\s+/g, '_').slice(0, 24) || 'FreeForge';
   const titleCase = s => String(s).replace(/\b\w/g, c => c.toUpperCase());
@@ -23,7 +28,7 @@
     const p = String(prompt || '').trim().slice(0, 120); if (!p) throw new Error('Describe your game first');
     const low = p.toLowerCase();
     let best = FALLBACK, score = 0;
-    GENRES.forEach(g => { const m = low.match(new RegExp(g.kw.source, 'g')); const sc = m ? m.length : 0; if (sc > score) { score = sc; best = g; } });
+    GENRES.forEach(g => { const m = low.match(new RegExp('\\b(?:' + g.kw.source + ')', 'g')); const sc = m ? m.length : 0; if (sc > score) { score = sc; best = g; } });
     const seed = hash(low);
     const bible = { prompt: p, name: safe(p), title: titleCase(p).slice(0, 28), genre: best.id, theme: best.theme, themeObj: null, thumbStyle: best.thumb, palette: best.pal, model: best.model, motion: best.anim, accent: best.accent, accent2: best.accent2, seed, aiTheme: false };
     return bible;

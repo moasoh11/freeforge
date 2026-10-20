@@ -6,6 +6,8 @@
     candy:   { name:'Candy Pop', bg:'#ffe6f2', panel:'#fff7fb', panel2:'#ffd1e8', accent:'#ff5fa8', accent2:'#7a5cff', text:'#43203a', muted:'#a0708f', good:'#2fc77a', bad:'#ff4466', radius:18, stroke:3, font:'FredokaOne', gradient:true },
     medieval:{ name:'Medieval', bg:'#2b1d12', panel:'#3d2a1a', panel2:'#4f3622', accent:'#e0b04a', accent2:'#b5532f', text:'#f6e8c8', muted:'#b79b72', good:'#7fbf4a', bad:'#c2392e', radius:4, stroke:3, font:'Fantasy', gradient:false },
     scifi:   { name:'Sci-Fi', bg:'#06121a', panel:'#0b1f2c', panel2:'#10303f', accent:'#4df2c8', accent2:'#3d8bff', text:'#dffcff', muted:'#6aa5b3', good:'#4df28a', bad:'#ff5a5a', radius:2, stroke:2, font:'Code', gradient:true },
+    ocean:   { name:'Ocean', bg:'#06223d', panel:'#0c3558', panel2:'#124a78', accent:'#5ee0ff', accent2:'#ffd24a', text:'#eafaff', muted:'#79a9c4', good:'#4de08a', bad:'#ff6b5a', radius:12, stroke:2, font:'FredokaOne', gradient:true },
+    forest:  { name:'Forest', bg:'#10281a', panel:'#1a3a26', panel2:'#255234', accent:'#9be05a', accent2:'#e6c15a', text:'#f0f7e0', muted:'#8fb08a', good:'#7be05a', bad:'#d9533f', radius:14, stroke:3, font:'Cartoon', gradient:false },
     light:   { name:'Clean Light', bg:'#eef1f6', panel:'#ffffff', panel2:'#e4e9f2', accent:'#3b6cff', accent2:'#00b894', text:'#1c2333', muted:'#7a849b', good:'#1fa865', bad:'#e5484d', radius:12, stroke:1, font:'GothamMedium', gradient:false }
   };
   const FONT_ENUM_NUM = { SourceSans:3, SourceSansBold:4, Arial:1, ArialBold:2 }; // numeric ids we are sure of
