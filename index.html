@@ -708,6 +708,8 @@ TweenService:Create(obj, TweenInfo.new(${d}, Enum.EasingStyle.${e}), { Backgroun
 (function (root) {
   'use strict';
   const ENDPOINT = 'https://text.pollinations.ai/openai';
+  let WORKER_URL = ''; // set after the Cloudflare Worker is deployed; enables parallel multi-pass
+
   const MATS = ['Plastic','Neon','Wood','Metal','Glass'], TYPES = ['box','cyl','ball'];
   const FONTS = ['GothamBold','GothamMedium','FredokaOne','Fantasy','Code','SourceSansBold'];
   const hex = (v, d) => (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)) ? v.toLowerCase() : d;
@@ -727,6 +729,11 @@ TweenService:Create(obj, TweenInfo.new(${d}, Enum.EasingStyle.${e}), { Backgroun
     const j = await r.json(); const m0 = j.choices && j.choices[0] && j.choices[0].message; const c = m0 && (m0.content || (m0.reasoning && m0.reasoning.indexOf('{') >= 0 ? m0.reasoning : ''));
     if (!c) throw new Error('Empty AI answer');
     return c;
+  }
+  async function askProxy(system, user, signal) {
+    const r = await fetch(WORKER_URL + '/llm', { method:'POST', headers:{ 'content-type':'application/json' }, signal: signal || AbortSignal.timeout(60000), body: JSON.stringify({ system, user: String(user).slice(0, 400) }) });
+    if (!r.ok) { let m = ''; try { m = (await r.json()).error; } catch (e) {} throw new Error(m || 'AI proxy error ' + r.status); }
+    const j = await r.json(); if (!j.text) throw new Error('Empty AI answer'); return j.text;
   }
   function extractJson(text) {
     let t = String(text).replace(/```json|```/g, '');
@@ -765,15 +772,19 @@ Rules: coordinates are LOCAL to the section: (0,0,0) is the middle of the sectio
   async function generateModelMulti(prompt, opts) {
     opts = opts || {}; const onStatus = opts.onStatus || (() => {}), signal = opts.signal;
     const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe what to build');
-    await waitCooldown(onStatus); onStatus('planning');
-    const plan = extractJson(await ask(PLAN_SYSTEM, 'Object: ' + p, signal));
+    const par = !!WORKER_URL; if (!par) await waitCooldown(onStatus); onStatus('planning');
+    const plan = extractJson(await (par ? askProxy : ask)(PLAN_SYSTEM, 'Object: ' + p, signal));
     const palette = (Array.isArray(plan.palette) ? plan.palette : []).map(c => hex(c, null)).filter(Boolean).slice(0, 6);
     const secs = (Array.isArray(plan.sections) ? plan.sections : []).slice(0, 6).map(sx => ({ name: String(sx.name || 'part').slice(0, 24), detail: String(sx.detail || '').slice(0, 160), center: vec(sx.center, -20, 20, [0, 4, 0]), size: vec(sx.size, 0.5, 24, [4, 4, 4]) }));
     if (!secs.length) throw new Error('AI plan had no sections');
+    const secPrompt = sec => `Whole object: ${p}\nPalette: ${palette.join(', ') || 'your choice'}\nSection: ${sec.name}. ${sec.detail}\nSection box size: ${sec.size.join(' x ')} (local coords from -${(sec.size[0]/2).toFixed(1)} to ${(sec.size[0]/2).toFixed(1)} in x, same idea for y and z).`;
+    const answers = par ? secs.map(sec => { onStatus('building all ' + secs.length + ' sections in parallel'); return askProxy(SECTION_SYSTEM, secPrompt(sec), signal).catch(() => askProxy(SECTION_SYSTEM, secPrompt(sec), signal)); }) : null;
+    if (par) answers.forEach(a => a.catch(() => {}));
     const prims = [];
     for (let i = 0; i < secs.length; i++) {
-      const sec = secs[i]; await waitCooldown(onStatus); onStatus('building ' + sec.name + ' (' + (i + 1) + '/' + secs.length + ')');
-      let j; try { j = extractJson(await ask(SECTION_SYSTEM, `Whole object: ${p}\nPalette: ${palette.join(', ') || 'your choice'}\nSection: ${sec.name}. ${sec.detail}\nSection box size: ${sec.size.join(' x ')} (local coords from -${(sec.size[0]/2).toFixed(1)} to ${(sec.size[0]/2).toFixed(1)} in x, same idea for y and z).`, signal)); } catch (e) { if (/rate limited/.test(e.message)) { await waitCooldown(onStatus); i--; continue; } continue; }
+      const sec = secs[i]; if (!par) await waitCooldown(onStatus); onStatus('building ' + sec.name + ' (' + (i + 1) + '/' + secs.length + ')');
+      let j; try { j = extractJson(par ? await answers[i] : await ask(SECTION_SYSTEM, secPrompt(sec)));
+      } catch (e) { if (!par && /rate limited/.test(e.message)) { await waitCooldown(onStatus); i--; } continue; }
       const raw = (Array.isArray(j.parts) ? j.parts : []).slice(0, 16).map(q => ({ t: TYPES.includes(q.t) ? q.t : 'box', pos: vec(q.pos, -30, 30, [0, 0, 0]), size: vec(q.size, 0.05, 30, [1, 1, 1]), rot: vec(q.rot, -360, 360, [0, 0, 0]), color: hex(q.color, palette[0] || '#c9ced6'), mat: MATS.includes(q.mat) ? q.mat : 'Plastic' }));
       if (!raw.length) { if (!sec.retried) { sec.retried = 1; i--; } continue; }
       // auto-fit: scale the section's parts uniformly so their bounding box fills the planned box
@@ -805,7 +816,7 @@ Rules: panel is a dark or light surface, panel2 slightly different, text must ha
     const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe the game style');
     return sanitizeTheme(extractJson(await ask(THEME_SYSTEM, 'Game style: ' + p, signal)));
   }
-  const api = { ask, extractJson, sanitizeModel, sanitizeTheme, generateModel, generateTheme, generateModelMulti, cooldownLeft, ENDPOINT };
+  const api = { ask, extractJson, sanitizeModel, sanitizeTheme, generateModel, generateTheme, generateModelMulti, setWorker: u => { WORKER_URL = String(u || '').replace(/\/$/, ''); }, cooldownLeft, ENDPOINT };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FreeForgeAI = api;
 })(typeof window !== 'undefined' ? window : globalThis);
 </script><script>/* FreeForge thumbnails/icons: canvas compositor (browser). Uses FreeForge3D.render for the hero model. */
