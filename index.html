@@ -204,6 +204,20 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
     }}
   };
 
+  const RESPONSIVE_SRC = [
+    '-- FreeForge: scales every panel to the screen (design baseline 1920x1080, clamped for phones and tablets).',
+    'local gui = script.Parent',
+    'local camera = workspace.CurrentCamera',
+    'local function update()',
+    '\tlocal s = math.clamp(camera.ViewportSize.Y / 1080, 0.55, 1.4)',
+    '\tfor _, child in ipairs(gui:GetChildren()) do',
+    '\t\tlocal u = child:FindFirstChildOfClass("UIScale")',
+    '\t\tif u then u.Scale = s end',
+    '\tend',
+    'end',
+    'update()',
+    'camera:GetPropertyChangedSignal("ViewportSize"):Connect(update)',
+    ''].join('\n');
   function buildKit(opts) {
     opts = opts || {};
     const base = THEMES[opts.theme] || THEMES.neon;
@@ -213,6 +227,15 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
     if (opts.radius != null) t.radius = clamp(+opts.radius||0,0,40);
     const comps = (opts.components && opts.components.length) ? opts.components : Object.keys(COMPONENTS);
     const kids = [].concat.apply([], comps.filter(k=>COMPONENTS[k]).map(k => COMPONENTS[k].build(t, opts)));
+    // Responsive: proper AnchorPoints + UIScale per top-level element, driven by a LocalScript (DevForum: design mobile-first, anchor to edges, scale to viewport)
+    kids.forEach(k => {
+      const p = k.props, sz = p.Size, po = p.Position; if (!sz || !po) return;
+      const ax = po.xs === 1 ? 1 : po.xs === 0.5 ? 0.5 : 0, ay = po.ys === 1 ? 1 : po.ys === 0.5 ? 0.5 : 0;
+      p.AnchorPoint = { x: ax, y: ay };
+      p.Position = U(po.xs, po.xo + ax * sz.xo, po.ys, po.yo + ay * sz.yo);
+      k.children.push(N('UIScale', { Scale: 1 }));
+    });
+    kids.push(N('LocalScript', { Name:'ResponsiveScale', Source: RESPONSIVE_SRC }));
     return N('ScreenGui', { Name: safeName(opts.name||'FreeForgeUI'), ResetOnSpawn:false, ZIndexBehavior:1 }, kids);
   }
 
@@ -223,6 +246,8 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
     if (k==='Size'||k==='Position'||k==='CellSize'||k==='CellPadding') return `<UDim2 name="${n}"><XS>${v.xs}</XS><XO>${v.xo}</XO><YS>${v.ys}</YS><YO>${v.yo}</YO></UDim2>`;
     if (k==='CornerRadius'||k==='Padding'||k.indexOf('Padding')===0) return `<UDim name="${n}"><S>${v.s}</S><O>${v.o}</O></UDim>`;
     if (/Color3$/.test(k) || (k==='Color' && typeof v==='string')) { const c = hex2rgb(v); return `<Color3 name="${n}"><R>${c[0]}</R><G>${c[1]}</G><B>${c[2]}</B></Color3>`; }
+    if (k==='AnchorPoint') return `<Vector2 name="AnchorPoint"><X>${v.x}</X><Y>${v.y}</Y></Vector2>`;
+    if (k==='Source') return `<ProtectedString name="Source"><![CDATA[${v}]]></ProtectedString>`;
     if (k==='Font') { const f = FONT_ENUM_NUM[v]!=null ? v : (FONT_FALLBACK[v]||'SourceSansBold'); return `<token name="Font">${FONT_ENUM_NUM[f]}</token>`; }
     if (k==='TextXAlignment') return `<token name="${n}">${{Left:0,Right:1,Center:2}[v]}</token>`;
     if (k==='TextYAlignment') return `<token name="${n}">${{Top:0,Center:1,Bottom:2}[v]}</token>`;
@@ -255,6 +280,7 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
     if (k==='Size'||k==='Position'||k==='CellSize'||k==='CellPadding') return `UDim2.new(${lz(v.xs)}, ${lz(v.xo)}, ${lz(v.ys)}, ${lz(v.yo)})`;
     if (/Padding(Top|Bottom|Left|Right)$|^CornerRadius$|^Padding$/.test(k)) return `UDim.new(${lz(v.s)}, ${lz(v.o)})`;
     if (/Color3$/.test(k) || (k==='Color' && typeof v==='string')) return `Color3.fromHex("${v}")`;
+    if (k==='AnchorPoint') return `Vector2.new(${v.x}, ${v.y})`;
     if (k==='Font') return `Enum.Font.${/^[A-Za-z0-9]+$/.test(v)?v:'SourceSansBold'}`;
     if (k==='TextXAlignment') return `Enum.TextXAlignment.${v}`;
     if (k==='TextYAlignment') return `Enum.TextYAlignment.${v}`;
@@ -281,6 +307,7 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
     out.push('\treturn inst');
     out.push('end');
     function emit(node, parentVar, depth) {
+      if (node.cls==='LocalScript') return;
       const v = 'o' + (++n);
       const p = node.props; const parts = [];
       if (node.cls==='UIGradient') {
@@ -296,6 +323,8 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
     // Luau has a 200 local-variable limit per function: wrap each top-level component in its own do-block.
     tree.children.forEach(c => { out.push('do'); const before = out.length; emit(c, 'gui', 1); out.push('end'); });
     out.push('');
+    out.push('-- Responsive scaling');
+    out.push(RESPONSIVE_SRC.replace('local gui = script.Parent\n',''));
     out.push('-- Behaviour stubs');
     out.push('for _, d in ipairs(gui:GetDescendants()) do');
     out.push('\tif d:IsA("TextButton") and d.Name == "CloseButton" then');
@@ -318,7 +347,7 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
       const kidsLayout = node.children.find(c => c.cls==='UIListLayout' || c.cls==='UIGridLayout');
       const inFlow = parentLayout != null;
       if (sz) s += `width:calc(${sz.xs*100}% + ${sz.xo}px);height:calc(${sz.ys*100}% + ${sz.yo}px);`;
-      if (!inFlow && po) s += `position:absolute;left:calc(${po.xs*100}% + ${po.xo}px);top:calc(${po.ys*100}% + ${po.yo}px);`;
+      if (!inFlow && po) s += `position:absolute;left:calc(${po.xs*100}% + ${po.xo}px);top:calc(${po.ys*100}% + ${po.yo}px);` + (p.AnchorPoint ? `translate:${-p.AnchorPoint.x*100}% ${-p.AnchorPoint.y*100}%;` : '');
       if (inFlow) s += 'position:relative;flex:none;';
       s += 'box-sizing:border-box;';
       if (p.BackgroundColor3 && p.BackgroundTransparency!==1) {
@@ -342,7 +371,7 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
       return s;
     }
     function html(node, parentLayout) {
-      if (/^UI/.test(node.cls)) return '';
+      if (/^UI/.test(node.cls) || node.cls==='LocalScript') return '';
       const tag = node.cls==='TextButton' ? 'button' : 'div';
       const layout = node.children.find(c => c.cls==='UIListLayout' || c.cls==='UIGridLayout');
       const inner = (node.props.Text!=null ? esc(node.props.Text) : '') + node.children.map(c => html(c, layout ? layout.cls : null)).join('');
