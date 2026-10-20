@@ -19,7 +19,7 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
 </style></head><body>
 <nav id="top"><b>FreeForge</b><button data-p="ui" class="on">UI kits</button><button data-p="m3d">3D models</button><button data-p="anim">Animation</button><button data-p="thumb">Thumbnails & icons</button><span>free, private, nothing uploaded</span></nav><div id="wrap"><aside id="p-ui">
 <h1>FreeForge</h1><small>Free Roblox UI kit builder. No account, no credits, nothing uploaded.</small>
-<label>Theme</label><select id="theme"></select>
+<div class="note" style="margin-top:12px"><b>AI theme</b> (free AI)<input type="text" id="ai-theme-p" placeholder="e.g. spooky halloween tycoon" maxlength="120" style="margin-top:6px"><button class="dl" id="ai-theme-b" style="margin-top:6px">Generate theme</button><div id="ai-theme-s" style="margin-top:6px;font-size:12px"></div></div><label>Theme</label><select id="theme"></select>
 <label>Accent color</label><input type="color" id="accent">
 <label>Second color</label><input type="color" id="accent2">
 <label>Corner radius: <span id="rv"></span></label><input type="range" id="radius" min="0" max="30" style="width:100%">
@@ -30,13 +30,13 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
 <button class="dl" id="dl-rbxmx">Download .rbxmx (Studio model)</button>
 <button class="dl alt" id="dl-lua">Download Luau script</button>
 <button class="dl alt" id="cp-lua">Copy Luau script</button>
-<div class="note"><b>Use it:</b> .rbxmx: in Studio right-click StarterGui, Insert from File. Luau: paste into a LocalScript in StarterPlayerScripts. Every part is a real editable Frame, TextButton, UICorner, UIStroke. No flat images.</div>
+<div class="note" id="ai-disc"><b>About the AI features:</b> when you press an AI button, only the text you typed is sent to the free Pollinations text API (open GPT-OSS 20B model, run by a third party, anonymous, about one request per 30 seconds per connection). Nothing else is uploaded; do not type personal information. AI output is validated and clamped before use. Everything else runs in your browser.</div><div class="note"><b>Use it:</b> .rbxmx: in Studio right-click StarterGui, Insert from File. Luau: paste into a LocalScript in StarterPlayerScripts. Every part is a real editable Frame, TextButton, UICorner, UIStroke. No flat images.</div>
 </aside>
 <main id="m-ui"><div id="stage"></div>
 <div class="tabs"><button data-t="lua">Luau</button><button data-t="xml">.rbxmx</button></div><pre id="code"></pre></main>
 
 <aside id="p-m3d" class="hid"><h1>3D Models</h1><small>Parametric models built from parts. Same geometry feeds the preview, the GLB and the Roblox export.</small>
-<label>Model</label><select id="mdl"></select><label>Palette</label><select id="pal"></select>
+<div class="note" style="margin-top:12px"><b>AI model</b> (free AI designs the parts)<input type="text" id="ai-m-p" placeholder="e.g. a cute mushroom house" maxlength="120" style="margin-top:6px"><button class="dl" id="ai-m-b" style="margin-top:6px">Generate with AI</button><div id="ai-m-s" style="margin-top:6px;font-size:12px"></div></div><label>Model</label><select id="mdl"></select><label>Palette</label><select id="pal"></select>
 <label>Accent color</label><input type="color" id="m-acc" value="#d9a441"><label>Scale: <span id="msv">1</span></label><input type="range" id="msc" min="0.5" max="3" step="0.1" value="1" style="width:100%">
 <label>Variation seed</label><input type="number" id="seed" value="7"><label class="chk"><input type="checkbox" id="spin" checked> Spin animation</label><label class="chk"><input type="checkbox" id="bob"> Bob animation</label>
 <label>Export</label><button class="dl" id="dl-glb">Download .glb (any 3D tool, Roblox 3D importer)</button><button class="dl alt" id="dl-mrb">Download .rbxmx (Parts model)</button><button class="dl alt" id="dl-mlua">Download Luau (builds + animates)</button>
@@ -220,7 +220,7 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
     ''].join('\n');
   function buildKit(opts) {
     opts = opts || {};
-    const base = THEMES[opts.theme] || THEMES.neon;
+    const base = (opts.themeObj && typeof opts.themeObj === 'object') ? opts.themeObj : (THEMES[opts.theme] || THEMES.neon);
     const t = Object.assign({}, base);
     if (opts.accent && /^#[0-9a-fA-F]{6}$/.test(opts.accent)) t.accent = opts.accent;
     if (opts.accent2 && /^#[0-9a-fA-F]{6}$/.test(opts.accent2)) t.accent2 = opts.accent2;
@@ -704,6 +704,70 @@ TweenService:Create(obj, TweenInfo.new(${d}, Enum.EasingStyle.${e}), { Backgroun
   const api = { PRESETS, EASE, uiLuau };
   if (typeof module!=='undefined' && module.exports) module.exports=api; else root.FreeForgeAnim=api;
 })(typeof window!=='undefined'?window:globalThis);
+</script><script>/* FreeForge AI: free anonymous LLM (Pollinations text API, open GPT-OSS 20B) -> validated JSON for 3D models and UI themes. */
+(function (root) {
+  'use strict';
+  const ENDPOINT = 'https://text.pollinations.ai/openai';
+  const MATS = ['Plastic','Neon','Wood','Metal','Glass'], TYPES = ['box','cyl','ball'];
+  const FONTS = ['GothamBold','GothamMedium','FredokaOne','Fantasy','Code','SourceSansBold'];
+  const hex = (v, d) => (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)) ? v.toLowerCase() : d;
+  const num = (v, lo, hi, d) => { v = +v; return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
+  const vec = (a, lo, hi, d) => Array.isArray(a) && a.length === 3 ? a.map((x,i) => num(x, lo, hi, d[i])) : d.slice();
+
+  let lastCall = 0;
+  const COOLDOWN_MS = 31000;
+  const cooldownLeft = () => Math.max(0, Math.ceil((lastCall + COOLDOWN_MS - Date.now()) / 1000));
+  async function ask(system, user, signal) {
+    if (cooldownLeft() > 0) throw new Error('The free AI allows one request every 30 seconds. Try again in ' + cooldownLeft() + 's.');
+    lastCall = Date.now();
+    const r = await fetch(ENDPOINT, { method:'POST', headers:{ 'content-type':'application/json' }, signal,
+      body: JSON.stringify({ model:'openai', temperature:0.7, max_tokens:6000, messages:[{ role:'system', content:system }, { role:'user', content:user }] }) });
+    if (r.status === 402 || r.status === 429) { const ra = +r.headers.get('retry-after') || 30; lastCall = Date.now() - COOLDOWN_MS + ra * 1000; throw new Error('The free AI is rate limited right now. Try again in ' + ra + 's.'); }
+    if (!r.ok) throw new Error('AI service error ' + r.status);
+    const j = await r.json(); const c = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+    if (!c) throw new Error('Empty AI answer');
+    return c;
+  }
+  function extractJson(text) {
+    let t = String(text).replace(/```json|```/g, '');
+    const a = t.indexOf('{'); if (a < 0) throw new Error('No JSON in answer');
+    let body = t.slice(a); const b = body.lastIndexOf('}'); if (b > 0) body = body.slice(0, b + 1);
+    const tryParse = x => { x = x.replace(/,\s*([}\]])/g, '$1'); return JSON.parse(x); };
+    try { return tryParse(body); } catch (e) {}
+    // repair a truncated answer: cut back to the last complete object and close the brackets
+    let cut = body; for (let i = 0; i < 60; i++) { const k = cut.lastIndexOf('}'); if (k < 0) break; cut = cut.slice(0, k + 1);
+      for (const tail of [']}', '}', ']}}']) { try { return tryParse(cut + tail); } catch (e) {} } cut = cut.slice(0, -1); }
+    throw new Error('AI answer was not valid JSON');
+  }
+  const MODEL_SYSTEM = `You design low-poly Roblox models from primitive parts. Reply with ONLY one JSON object, no prose:
+{"name":"Short Name","parts":[{"t":"box|cyl|ball","pos":[x,y,z],"size":[x,y,z],"rot":[rx,ry,rz],"color":"#rrggbb","mat":"Plastic|Neon|Wood|Metal|Glass"}]}
+Rules: units are studs, Y is up, the model sits on y=0 and is centered on x=0,z=0, overall height 2 to 16. Use 8 to 36 parts. "cyl" is a cylinder standing upright (size = [diameter, height, diameter]). "ball" size = [d,d,d]. rot is degrees (use [0,0,0] unless needed). Use a coherent color palette (3-5 colors), Neon only for glowing details. Make the silhouette recognisable. Build in layers from the ground up: a part's pos y must equal its base height plus half its size y, so parts touch instead of floating. Add details (windows, trim, spots, handles) as small extra parts, and mirror them left/right.
+Example mushroom: {"name":"Mushroom","parts":[{"t":"cyl","pos":[0,1.5,0],"size":[1.6,3,1.6],"color":"#f3e9d2","mat":"Plastic","rot":[0,0,0]},{"t":"ball","pos":[0,3.4,0],"size":[5,3.2,5],"color":"#d9363e","mat":"Plastic","rot":[0,0,0]},{"t":"ball","pos":[1.4,4.4,0.8],"size":[0.8,0.5,0.8],"color":"#ffffff","mat":"Plastic","rot":[0,0,0]},{"t":"ball","pos":[-1.2,4.5,-1],"size":[0.7,0.5,0.7],"color":"#ffffff","mat":"Plastic","rot":[0,0,0]}]}\nExample sword: {"name":"Sword","parts":[{"t":"box","pos":[0,5,0],"size":[0.5,6,0.12],"color":"#c9ced6","mat":"Metal","rot":[0,0,0]},{"t":"box","pos":[0,2,0],"size":[2.2,0.3,0.4],"color":"#d9a441","mat":"Metal","rot":[0,0,0]},{"t":"cyl","pos":[0,1,0],"size":[0.35,1.6,0.35],"color":"#8a5a2b","mat":"Wood","rot":[0,0,0]}]}`;
+  function sanitizeModel(j) {
+    const parts = (j && (j.parts || j.prims)) || []; if (!Array.isArray(parts) || !parts.length) throw new Error('AI returned no parts');
+    const prims = parts.slice(0, 48).map(p => ({ t: TYPES.includes(p.t) ? p.t : 'box', pos: vec(p.pos, -30, 30, [0,1,0]), size: vec(p.size, 0.1, 30, [1,1,1]), rot: vec(p.rot, -360, 360, [0,0,0]),
+      color: hex(p.color, '#c9ced6'), mat: MATS.includes(p.mat) ? p.mat : 'Plastic' }));
+    return { name: String(j.name || 'AI Model').replace(/[^A-Za-z0-9 ]/g, '').slice(0, 32) || 'AI Model', prims, spin: true, bob: false };
+  }
+  async function generateModel(prompt, signal) {
+    const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe what to build');
+    return sanitizeModel(extractJson(await ask(MODEL_SYSTEM, 'Build: ' + p, signal)));
+  }
+  const THEME_SYSTEM = `You design game UI color themes. Reply with ONLY one JSON object, no prose:
+{"name":"Theme Name","bg":"#hex","panel":"#hex","panel2":"#hex","accent":"#hex","accent2":"#hex","text":"#hex","muted":"#hex","good":"#hex","bad":"#hex","radius":0-24,"stroke":1-4,"font":"GothamBold|GothamMedium|FredokaOne|Fantasy|Code"}
+Rules: panel is a dark or light surface, panel2 slightly different, text must have strong contrast on panel, accent is the signature color, good is green-ish, bad is red-ish.`;
+  function sanitizeTheme(j) {
+    return { name: String(j.name || 'AI Theme').replace(/[^A-Za-z0-9 ]/g,'').slice(0,24) || 'AI Theme', bg: hex(j.bg,'#12121c'), panel: hex(j.panel,'#1b1b2b'), panel2: hex(j.panel2,'#26263d'),
+      accent: hex(j.accent,'#00e5ff'), accent2: hex(j.accent2,'#ff3df2'), text: hex(j.text,'#f2f4ff'), muted: hex(j.muted,'#8f93b8'), good: hex(j.good,'#3dff8b'), bad: hex(j.bad,'#ff4d6d'),
+      radius: num(j.radius,0,24,10), stroke: num(j.stroke,1,4,2), font: FONTS.includes(j.font) ? j.font : 'GothamBold', gradient: true };
+  }
+  async function generateTheme(prompt, signal) {
+    const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe the game style');
+    return sanitizeTheme(extractJson(await ask(THEME_SYSTEM, 'Game style: ' + p, signal)));
+  }
+  const api = { ask, extractJson, sanitizeModel, sanitizeTheme, generateModel, generateTheme, cooldownLeft, ENDPOINT };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FreeForgeAI = api;
+})(typeof window !== 'undefined' ? window : globalThis);
 </script><script>/* FreeForge thumbnails/icons: canvas compositor (browser). Uses FreeForge3D.render for the hero model. */
 (function (root) {
   'use strict';
@@ -764,8 +828,8 @@ TweenService:Create(obj, TweenInfo.new(${d}, Enum.EasingStyle.${e}), { Backgroun
 const F=window.FreeForge,$=id=>document.getElementById(id);let tab='lua';
 for(const k in F.THEMES){const o=document.createElement('option');o.value=k;o.textContent=F.THEMES[k].name;$('theme').appendChild(o)}
 for(const k in F.COMPONENTS){const d=document.createElement('label');d.className='chk';d.innerHTML='<input type="checkbox" checked value="'+k+'"> '+F.COMPONENTS[k].name;$('comps').appendChild(d)}
-function sync(){const t=F.THEMES[$('theme').value];$('accent').value=t.accent;$('accent2').value=t.accent2;$('radius').value=t.radius;$('rv').textContent=t.radius}
-function opts(){return{theme:$('theme').value,accent:$('accent').value,accent2:$('accent2').value,radius:$('radius').value,cols:+$('cols').value,rows:+$('rows').value,name:$('kname').value,components:[...document.querySelectorAll('#comps input:checked')].map(i=>i.value)}}
+function sync(){const t=F.THEMES[$('theme').value]||F.THEMES.neon;$('accent').value=t.accent;$('accent2').value=t.accent2;$('radius').value=t.radius;$('rv').textContent=t.radius}
+function opts(){return{themeObj:$('theme').value==='ai'?aiTheme:null,theme:$('theme').value,accent:$('accent').value,accent2:$('accent2').value,radius:$('radius').value,cols:+$('cols').value,rows:+$('rows').value,name:$('kname').value,components:[...document.querySelectorAll('#comps input:checked')].map(i=>i.value)}}
 function render(){$('rv').textContent=$('radius').value;const tree=F.buildKit(opts());const t=F.THEMES[$('theme').value];
 const vm={game:['HUD','Buttons','Dialog'],inventory:['Inventory'],shop:['Shop']}[$('view').value];const pv=vm?{cls:tree.cls,props:tree.props,children:tree.children.filter(c=>vm.includes(c.props.Name))}:tree;$('stage').innerHTML=F.toHtml(pv,960,540);$('stage').firstChild.style.background='linear-gradient(135deg,'+t.bg+',#000)';
 $('code').textContent=tab==='lua'?F.toLuau(tree):F.toRbxmx(tree);window.__tree=tree}
@@ -787,9 +851,9 @@ for(const k in G3.MODELS){const o=document.createElement('option');o.value=k;o.t
 for(const k in G3.PALETTES){const o=document.createElement('option');o.value=k;o.textContent=k[0].toUpperCase()+k.slice(1);$('pal').appendChild(o)}
 function mOpts(){return{model:$('mdl').value,palette:$('pal').value,accent:$('m-acc').value,scale:+$('msc').value,seed:+$('seed').value,spin:$('spin').checked,bob:$('bob').checked}}
 let model=null,fixedYaw=null;
-function mRender(){$('msv').textContent=$('msc').value;model=G3.buildModel(mOpts());$('mcode').textContent=G3.toLuau(model);$('m-info').textContent=model.prims.length+' parts, '+model.name}
+function mRender(){$('msv').textContent=$('msc').value;if(aiModel){model=Object.assign({},aiModel,{spin:$('spin').checked,bob:$('bob').checked,__fit:0})}else model=G3.buildModel(mOpts());$('mcode').textContent=G3.toLuau(model);$('m-info').textContent=model.prims.length+' parts, '+model.name}
 function frame3d(now){if(panel==='m3d'&&model){const t=(now-t0)/1000;const y=fixedYaw!=null?fixedYaw:(model.spin?t*69:25);G3.render($('cv').getContext('2d'),model,960,540,y,-18,null,model.bob?Math.sin(t*2)*0.6:0)}requestAnimationFrame(frame3d)}
-['mdl','pal','m-acc','msc','seed','spin','bob'].forEach(i=>$(i).oninput=mRender);
+['mdl','pal','m-acc','msc','seed'].forEach(i=>$(i).oninput=()=>{aiModel=null;mRender()});['spin','bob'].forEach(i=>$(i).oninput=mRender);
 const saveBytes=(n,b,t)=>dl(n,b,t);
 $('dl-glb').onclick=()=>{const u=G3.toGlb(model);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([u],{type:'model/gltf-binary'}));a.download=model.name.replace(/ /g,'')+'.glb';a.click()};
 $('dl-mrb').onclick=()=>dl(model.name.replace(/ /g,'')+'.rbxmx',G3.toRbxmx(model),'application/xml');
@@ -805,6 +869,13 @@ $('dl-alua').onclick=()=>dl('animate_'+$('apre').value+'.lua',AN.uiLuau($('apre'
 $('aease').value='Quad';
 mRender();requestAnimationFrame(frame3d);
 
+
+/* ---- AI ---- */
+const AI=window.FreeForgeAI;let aiTheme=null,aiModel=null;
+function aiBusy(btn,statusEl,fn,done){const left=AI.cooldownLeft();if(left>0){statusEl.textContent='Free AI is limited to one request per 30s. Wait '+left+'s.';return}
+btn.disabled=true;statusEl.textContent='Thinking... (about 10-30s)';fn().then(r=>{done(r);statusEl.textContent='Done.'}).catch(e=>{statusEl.textContent='Could not generate: '+e.message}).finally(()=>{btn.disabled=false})}
+$('ai-theme-b').onclick=()=>aiBusy($('ai-theme-b'),$('ai-theme-s'),()=>AI.generateTheme($('ai-theme-p').value),t=>{aiTheme=t;F.THEMES.ai=t;if(![...$('theme').options].some(o=>o.value==='ai')){const o=document.createElement('option');o.value='ai';$('theme').appendChild(o)}$('theme').querySelector('option[value=ai]').textContent='AI: '+t.name;$('theme').value='ai';sync();render()});
+$('ai-m-b').onclick=()=>aiBusy($('ai-m-b'),$('ai-m-s'),()=>AI.generateModel($('ai-m-p').value),m=>{aiModel=m;mRender()});
 /* ---- thumbnails ---- */
 const TH=window.FreeForgeThumb;
 for(const k in TH.STYLES){const o=document.createElement('option');o.value=k;o.textContent=TH.STYLES[k].name;$('t-style').appendChild(o)}

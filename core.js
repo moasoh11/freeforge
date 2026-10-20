@@ -162,7 +162,7 @@
     ''].join('\n');
   function buildKit(opts) {
     opts = opts || {};
-    const base = THEMES[opts.theme] || THEMES.neon;
+    const base = (opts.themeObj && typeof opts.themeObj === 'object') ? opts.themeObj : (THEMES[opts.theme] || THEMES.neon);
     const t = Object.assign({}, base);
     if (opts.accent && /^#[0-9a-fA-F]{6}$/.test(opts.accent)) t.accent = opts.accent;
     if (opts.accent2 && /^#[0-9a-fA-F]{6}$/.test(opts.accent2)) t.accent2 = opts.accent2;
