@@ -34,6 +34,16 @@
     return bible;
   }
 
+  // Merge AI choices (already validated against our menus) over a keyword plan.
+  function applyAi(bible, over) {
+    over = over || {}; const g = GENRES.find(x => x.id === over.genre);
+    const b = Object.assign({}, bible);
+    if (g) { b.genre = g.id; b.theme = g.theme; b.thumbStyle = g.thumb; b.palette = g.pal; b.model = g.model; b.motion = g.anim; b.accent = g.accent; b.accent2 = g.accent2; }
+    ['model', 'motion', 'accent', 'accent2'].forEach(k => { if (over[k]) b[k] = over[k]; });
+    if (over.title) { b.title = over.title; b.name = safe(over.title); }
+    b.aiPlanned = true; return b;
+  }
+
   // Step 2: build every asset from the bible. `ai` is optional (AI hero model and/or theme already applied to the bible).
   function build(bible, opts) {
     opts = opts || {}; const F = opts.core || root.FreeForge, G = opts.g3d || root.FreeForge3D, A = opts.anim || root.FreeForgeAnim;
@@ -72,6 +82,6 @@
     const end = Uint8Array.from([0x50, 0x4b, 5, 6, 0, 0, 0, 0, ...u16(Object.keys(files).length), ...u16(Object.keys(files).length), ...u32(cs), ...u32(off), 0, 0]);
     const all = parts.concat(central, [end]); const out = new Uint8Array(all.reduce((a, b) => a + b.length, 0)); let p = 0; all.forEach(b => { out.set(b, p); p += b.length; }); return out;
   }
-  const api = { GENRES, plan, build, zip, crc32 };
+  const api = { GENRES, plan, applyAi, build, zip, crc32 };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FreeForgeEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -19,9 +19,9 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
 </style></head><body>
 <nav id="top"><b>FreeForge</b><button data-p="eng">Engine</button><button data-p="ui" class="on">UI kits</button><button data-p="m3d">3D models</button><button data-p="anim">Animation</button><button data-p="thumb">Thumbnails & icons</button><span>free, private, nothing uploaded</span></nav><div id="wrap"><aside id="p-eng" class="hid"><h1>FreeForge Engine</h1><small>One prompt in, a matching asset pack out: UI kit, 3D hero model, animation, thumbnail and icon. All free, built in your browser.</small>
 <label>Describe your game</label><input type="text" id="e-p" maxlength="100" placeholder="e.g. spooky haunted house horror" value="dragon kingdom rpg">
-<label class="chk"><input type="checkbox" id="e-ai"> Also ask the free AI for a custom theme (slower, sends the text above to a third party)</label>
+<label class="chk"><input type="checkbox" id="e-ai" checked> AI art director (free, on our own server): picks genre, title, hero model, motion, colors and a custom UI theme from your idea. Only the text above is sent.</label>
 <button class="dl" id="e-go" style="margin-top:12px">Generate asset pack</button><div id="e-st" style="margin-top:8px;font-size:12px"></div>
-<button class="dl alt" id="e-zip" style="margin-top:8px" disabled>Download pack (.zip)</button>
+<div class="note"><b>AI script helper</b> (free)<input type="text" id="e-sp" maxlength="200" placeholder="e.g. coin pickup that gives 10 coins and plays a sound" style="margin-top:6px"><button class="dl" id="e-sb" style="margin-top:6px">Write Luau script</button><div id="e-ss" style="margin-top:6px;font-size:12px"></div></div><button class="dl alt" id="e-zip" style="margin-top:8px" disabled>Download pack (.zip)</button>
 <div class="note"><b>How it works:</b> your prompt becomes a style bible (genre, theme, palette, thumbnail style, hero model, motion). Every asset is then built from that one bible so they match. Without AI this is instant and works offline.</div></aside><aside id="p-ui">
 <h1>FreeForge</h1><small>Free Roblox UI kit builder. No account, no credits, nothing uploaded.</small>
 <div class="note" style="margin-top:12px"><b>AI theme</b> (free AI)<input type="text" id="ai-theme-p" placeholder="e.g. spooky halloween tycoon" maxlength="120" style="margin-top:6px"><button class="dl" id="ai-theme-b" style="margin-top:6px">Generate theme</button><div id="ai-theme-s" style="margin-top:6px;font-size:12px"></div></div><label>Theme</label><select id="theme"></select>
@@ -37,7 +37,7 @@ pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;
 <button class="dl alt" id="cp-lua">Copy Luau script</button>
 <div class="note" id="ai-disc"><b>About the AI features:</b> when you press an AI button, only the text you typed is sent to the free Pollinations text API (open GPT-OSS 20B model, run by a third party, anonymous, about one request per 30 seconds per connection). Nothing else is uploaded; do not type personal information. AI output is validated and clamped before use. Everything else runs in your browser.</div><div class="note"><b>Use it:</b> .rbxmx: in Studio right-click StarterGui, Insert from File. Luau: paste into a LocalScript in StarterPlayerScripts. Every part is a real editable Frame, TextButton, UICorner, UIStroke. No flat images.</div>
 </aside>
-<main id="m-eng" class="hid"><div id="e-stage" style="display:inline-block;border-radius:12px;overflow:hidden"></div><div style="display:flex;gap:14px;margin-top:12px;align-items:flex-start;flex-wrap:wrap"><canvas id="e-th" width="1280" height="720" style="width:384px;height:216px;border-radius:10px"></canvas><canvas id="e-ic" width="512" height="512" style="width:216px;height:216px"></canvas><canvas id="e-3d" width="384" height="216" style="border-radius:10px;background:#12121c"></canvas></div><pre id="e-info" style="margin-top:12px"></pre></main><main id="m-ui"><div id="stage"></div>
+<main id="m-eng" class="hid"><div id="e-stage" style="display:inline-block;border-radius:12px;overflow:hidden"></div><div style="display:flex;gap:14px;margin-top:12px;align-items:flex-start;flex-wrap:wrap"><canvas id="e-th" width="1280" height="720" style="width:384px;height:216px;border-radius:10px"></canvas><canvas id="e-ic" width="512" height="512" style="width:216px;height:216px"></canvas><canvas id="e-3d" width="384" height="216" style="border-radius:10px;background:#12121c"></canvas></div><pre id="e-script" style="margin-top:12px;max-height:340px;overflow:auto;white-space:pre-wrap"></pre><pre id="e-info" style="margin-top:12px"></pre></main><main id="m-ui"><div id="stage"></div>
 <div class="tabs"><button data-t="lua">Luau</button><button data-t="xml">.rbxmx</button></div><pre id="code"></pre></main>
 
 <aside id="p-m3d" class="hid"><h1>3D Models</h1><small>Parametric models built from parts. Same geometry feeds the preview, the GLB and the Roblox export.</small>
@@ -759,6 +759,37 @@ TweenService:Create(obj, TweenInfo.new(${d}, Enum.EasingStyle.${e}), { Backgroun
     if (!r.ok) { let m = ''; try { m = (await r.json()).error; } catch (e) {} throw new Error(m || 'AI proxy error ' + r.status); }
     const j = await r.json(); if (!j.text) throw new Error('Empty AI answer'); return j.text;
   }
+  // ---- fast AI via our own free Worker (Cloudflare Workers AI) ----
+  const GENRE_IDS = ['horror','mech','scifi','cute','pirate','racing','combat','nature','fantasy','tycoon','obby'];
+  const MODEL_IDS = ['sword','tree','house','crate','potion','crystal','chest','tower','coin','ship','car','robot','shield','mushroom','pet'];
+  const MOTION_IDS = ['popIn','pulse','shake','slideIn','bounce','glow','fadeIn'];
+  const BIBLE_SYSTEM = `You are the art director for a Roblox game. Read the game idea and choose a consistent style. Reply with ONLY one JSON object, no prose:
+{"genre":one of ${GENRE_IDS.join('|')},"title":"2-4 word catchy game title","hero":one of ${MODEL_IDS.join('|')},"motion":one of ${MOTION_IDS.join('|')},"accent":"#rrggbb main brand color","accent2":"#rrggbb secondary color"}
+Pick the closest genre even if the idea is unusual. The hero is the single 3D object that best represents the game.`;
+  async function generateBible(prompt, signal) {
+    if (!WORKER_URL) throw new Error('Fast AI is not available right now');
+    const p = String(prompt || '').slice(0, 120).trim(); if (p.length < 3) throw new Error('Describe your game first');
+    const j = extractJson(await askProxy(BIBLE_SYSTEM, 'Game idea: ' + p, signal));
+    const out = {};
+    if (GENRE_IDS.includes(j.genre)) out.genre = j.genre;
+    if (MODEL_IDS.includes(j.hero)) out.model = j.hero;
+    if (MOTION_IDS.includes(j.motion)) out.motion = j.motion;
+    if (typeof j.title === 'string') out.title = j.title.replace(/[^A-Za-z0-9 !'-]/g, '').trim().slice(0, 28);
+    const a1 = hex(j.accent, null), a2 = hex(j.accent2, null); if (a1) out.accent = a1; if (a2) out.accent2 = a2;
+    return out;
+  }
+  async function generateThemeFast(prompt, signal) {
+    if (!WORKER_URL) throw new Error('Fast AI is not available right now');
+    return sanitizeTheme(extractJson(await askProxy(THEME_SYSTEM, 'Game style: ' + String(prompt || '').slice(0, 120), signal)));
+  }
+  const SCRIPT_SYSTEM = `You write short, correct Roblox Luau scripts. Reply with ONLY the Luau code, no markdown fences, no explanations outside comments. Use game:GetService(), local variables, and comments. Only code for the requested feature. Never use loadstring, require of asset ids, HttpService, or MarketplaceService.`;
+  async function generateScript(prompt, signal) {
+    if (!WORKER_URL) throw new Error('Fast AI is not available right now');
+    const p = String(prompt || '').slice(0, 300).trim(); if (p.length < 5) throw new Error('Describe the script first');
+    let t = String(await askProxy(SCRIPT_SYSTEM, p.slice(0, 400), signal)).replace(/```(?:lua|luau)?/gi, '').trim();
+    if (/loadstring|HttpService|MarketplaceService|require\s*\(\s*\d/.test(t)) throw new Error('The AI wrote something unsafe, so it was blocked. Try rephrasing.');
+    return t.slice(0, 6000);
+  }
   async function generateImage(prompt, style, signal) {
     const p = String(prompt || '').trim().slice(0, 200); if (p.length < 3) throw new Error('Describe the picture first');
     if (!WORKER_URL) throw new Error('AI images are not available right now');
@@ -848,7 +879,7 @@ Rules: panel is a dark or light surface, panel2 slightly different, text must ha
     const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe the game style');
     return sanitizeTheme(extractJson(await ask(THEME_SYSTEM, 'Game style: ' + p, signal)));
   }
-  const api = { ask, extractJson, sanitizeModel, sanitizeTheme, generateModel, generateTheme, generateModelMulti, generateImage, setWorker: u => { WORKER_URL = String(u || '').replace(/\/$/, ''); }, cooldownLeft, ENDPOINT };
+  const api = { ask, extractJson, sanitizeModel, sanitizeTheme, generateModel, generateTheme, generateModelMulti, generateImage, generateBible, generateThemeFast, generateScript, setWorker: u => { WORKER_URL = String(u || '').replace(/\/$/, ''); }, cooldownLeft, ENDPOINT };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FreeForgeAI = api;
 })(typeof window !== 'undefined' ? window : globalThis);
 </script><script>/* FreeForge thumbnails/icons: canvas compositor (browser). Uses FreeForge3D.render for the hero model. */
@@ -945,6 +976,16 @@ Rules: panel is a dark or light surface, panel2 slightly different, text must ha
     return bible;
   }
 
+  // Merge AI choices (already validated against our menus) over a keyword plan.
+  function applyAi(bible, over) {
+    over = over || {}; const g = GENRES.find(x => x.id === over.genre);
+    const b = Object.assign({}, bible);
+    if (g) { b.genre = g.id; b.theme = g.theme; b.thumbStyle = g.thumb; b.palette = g.pal; b.model = g.model; b.motion = g.anim; b.accent = g.accent; b.accent2 = g.accent2; }
+    ['model', 'motion', 'accent', 'accent2'].forEach(k => { if (over[k]) b[k] = over[k]; });
+    if (over.title) { b.title = over.title; b.name = safe(over.title); }
+    b.aiPlanned = true; return b;
+  }
+
   // Step 2: build every asset from the bible. `ai` is optional (AI hero model and/or theme already applied to the bible).
   function build(bible, opts) {
     opts = opts || {}; const F = opts.core || root.FreeForge, G = opts.g3d || root.FreeForge3D, A = opts.anim || root.FreeForgeAnim;
@@ -983,7 +1024,7 @@ Rules: panel is a dark or light surface, panel2 slightly different, text must ha
     const end = Uint8Array.from([0x50, 0x4b, 5, 6, 0, 0, 0, 0, ...u16(Object.keys(files).length), ...u16(Object.keys(files).length), ...u32(cs), ...u32(off), 0, 0]);
     const all = parts.concat(central, [end]); const out = new Uint8Array(all.reduce((a, b) => a + b.length, 0)); let p = 0; all.forEach(b => { out.set(b, p); p += b.length; }); return out;
   }
-  const api = { GENRES, plan, build, zip, crc32 };
+  const api = { GENRES, plan, applyAi, build, zip, crc32 };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FreeForgeEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);
 </script>
@@ -1051,8 +1092,9 @@ $('e-info').textContent='Style bible\n  genre: '+b.genre+'\n  UI theme: '+(b.aiT
 $('t-aibg-b').onclick=()=>{const st=$('t-aibg-s'),b=$('t-aibg-b');b.disabled=true;st.textContent='Generating (about 5s)...';AI.generateImage($('t-aibg').value,'thumbnail').then(im=>{tBg=im;tRender();st.textContent='Done. Only your typed text was sent to the free AI server.'}).catch(e=>{st.textContent='Could not generate: '+e.message}).finally(()=>{b.disabled=false})};
 $('t-aibg-x').onclick=()=>{tBg=null;tRender();$('t-aibg-s').textContent=''};
 $('e-go').onclick=async()=>{const st=$('e-st');try{const b=EN.plan($('e-p').value);$('e-go').disabled=true;
-if($('e-ai').checked){const left=AI.cooldownLeft();if(left>0){st.textContent='Free AI is limited to one request per 30s. Wait '+left+'s. Building without AI theme.'}else{st.textContent='Asking the free AI for a theme (10-30s)...';try{b.themeObj=await AI.generateTheme(b.prompt);b.aiTheme=true}catch(e){st.textContent='AI theme skipped: '+e.message}}}
-const r=EN.build(b,{core:F,g3d:G3,anim:AN});ePack=r;eShow(r);$('e-zip').disabled=false;if(!/skipped|Wait/.test(st.textContent))st.textContent='Done. Genre: '+b.genre+'.'}catch(e){st.textContent='Could not generate: '+e.message}finally{$('e-go').disabled=false}};
+let bb=b;if($('e-ai').checked){st.textContent='AI art director thinking...';try{const [over,th]=await Promise.all([AI.generateBible(b.prompt),AI.generateThemeFast(b.prompt).catch(()=>null)]);bb=EN.applyAi(b,over);if(th){bb.themeObj=th;bb.aiTheme=true}}catch(e){st.textContent='AI skipped ('+e.message+'). Built with keyword rules.'}}
+const r=EN.build(bb,{core:F,g3d:G3,anim:AN});ePack=r;eShow(r);$('e-zip').disabled=false;if(!/skipped/.test(st.textContent))st.textContent='Done. Genre: '+bb.genre+(bb.aiPlanned?' (AI planned)':'')+'.'}catch(e){st.textContent='Could not generate: '+e.message}finally{$('e-go').disabled=false}};
+$('e-sb').onclick=()=>{const st=$('e-ss'),b=$('e-sb');b.disabled=true;st.textContent='Writing...';AI.generateScript($('e-sp').value).then(t=>{$('e-script').textContent=t;st.textContent='Done. AI code can have bugs: read it and test in Studio before publishing.'}).catch(e=>{st.textContent='Could not write: '+e.message}).finally(()=>{b.disabled=false})};
 $('e-zip').onclick=()=>{if(!ePack)return;const files=Object.assign({},ePack.files);let n=2;const fin=()=>{if(--n)return;const z=EN.zip(files);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([z],{type:'application/zip'}));a.download=ePack.bible.name+'_FreeForgePack.zip';a.click()};
 const grab=(cv,nm)=>cv.toBlob(b=>b.arrayBuffer().then(ab=>{files[nm]=new Uint8Array(ab);fin()}));grab($('e-th'),'thumbnail.png');grab($('e-ic'),'icon.png')};
 $('ai-mf-b').onclick=()=>{const st=$('ai-m-s'),bs=['ai-m-b','ai-mm-b','ai-mf-b'].map($);bs.forEach(b=>b.disabled=true);const t0=Date.now();AI.generateModelMulti($('ai-m-p').value,{fast:true,onStatus:x=>{st.textContent='Fast multi-pass: '+x}}).then(m=>{aiModel=m;mRender();st.textContent='Done in '+((Date.now()-t0)/1000).toFixed(1)+'s ('+m.passes+' passes, '+m.prims.length+' parts). Fast mode is lower quality than the detailed button.'}).catch(e=>{st.textContent='Could not generate: '+e.message}).finally(()=>bs.forEach(b=>b.disabled=false))};

@@ -29,6 +29,37 @@
     if (!r.ok) { let m = ''; try { m = (await r.json()).error; } catch (e) {} throw new Error(m || 'AI proxy error ' + r.status); }
     const j = await r.json(); if (!j.text) throw new Error('Empty AI answer'); return j.text;
   }
+  // ---- fast AI via our own free Worker (Cloudflare Workers AI) ----
+  const GENRE_IDS = ['horror','mech','scifi','cute','pirate','racing','combat','nature','fantasy','tycoon','obby'];
+  const MODEL_IDS = ['sword','tree','house','crate','potion','crystal','chest','tower','coin','ship','car','robot','shield','mushroom','pet'];
+  const MOTION_IDS = ['popIn','pulse','shake','slideIn','bounce','glow','fadeIn'];
+  const BIBLE_SYSTEM = `You are the art director for a Roblox game. Read the game idea and choose a consistent style. Reply with ONLY one JSON object, no prose:
+{"genre":one of ${GENRE_IDS.join('|')},"title":"2-4 word catchy game title","hero":one of ${MODEL_IDS.join('|')},"motion":one of ${MOTION_IDS.join('|')},"accent":"#rrggbb main brand color","accent2":"#rrggbb secondary color"}
+Pick the closest genre even if the idea is unusual. The hero is the single 3D object that best represents the game.`;
+  async function generateBible(prompt, signal) {
+    if (!WORKER_URL) throw new Error('Fast AI is not available right now');
+    const p = String(prompt || '').slice(0, 120).trim(); if (p.length < 3) throw new Error('Describe your game first');
+    const j = extractJson(await askProxy(BIBLE_SYSTEM, 'Game idea: ' + p, signal));
+    const out = {};
+    if (GENRE_IDS.includes(j.genre)) out.genre = j.genre;
+    if (MODEL_IDS.includes(j.hero)) out.model = j.hero;
+    if (MOTION_IDS.includes(j.motion)) out.motion = j.motion;
+    if (typeof j.title === 'string') out.title = j.title.replace(/[^A-Za-z0-9 !'-]/g, '').trim().slice(0, 28);
+    const a1 = hex(j.accent, null), a2 = hex(j.accent2, null); if (a1) out.accent = a1; if (a2) out.accent2 = a2;
+    return out;
+  }
+  async function generateThemeFast(prompt, signal) {
+    if (!WORKER_URL) throw new Error('Fast AI is not available right now');
+    return sanitizeTheme(extractJson(await askProxy(THEME_SYSTEM, 'Game style: ' + String(prompt || '').slice(0, 120), signal)));
+  }
+  const SCRIPT_SYSTEM = `You write short, correct Roblox Luau scripts. Reply with ONLY the Luau code, no markdown fences, no explanations outside comments. Use game:GetService(), local variables, and comments. Only code for the requested feature. Never use loadstring, require of asset ids, HttpService, or MarketplaceService.`;
+  async function generateScript(prompt, signal) {
+    if (!WORKER_URL) throw new Error('Fast AI is not available right now');
+    const p = String(prompt || '').slice(0, 300).trim(); if (p.length < 5) throw new Error('Describe the script first');
+    let t = String(await askProxy(SCRIPT_SYSTEM, p.slice(0, 400), signal)).replace(/```(?:lua|luau)?/gi, '').trim();
+    if (/loadstring|HttpService|MarketplaceService|require\s*\(\s*\d/.test(t)) throw new Error('The AI wrote something unsafe, so it was blocked. Try rephrasing.');
+    return t.slice(0, 6000);
+  }
   async function generateImage(prompt, style, signal) {
     const p = String(prompt || '').trim().slice(0, 200); if (p.length < 3) throw new Error('Describe the picture first');
     if (!WORKER_URL) throw new Error('AI images are not available right now');
@@ -118,6 +149,6 @@ Rules: panel is a dark or light surface, panel2 slightly different, text must ha
     const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe the game style');
     return sanitizeTheme(extractJson(await ask(THEME_SYSTEM, 'Game style: ' + p, signal)));
   }
-  const api = { ask, extractJson, sanitizeModel, sanitizeTheme, generateModel, generateTheme, generateModelMulti, generateImage, setWorker: u => { WORKER_URL = String(u || '').replace(/\/$/, ''); }, cooldownLeft, ENDPOINT };
+  const api = { ask, extractJson, sanitizeModel, sanitizeTheme, generateModel, generateTheme, generateModelMulti, generateImage, generateBible, generateThemeFast, generateScript, setWorker: u => { WORKER_URL = String(u || '').replace(/\/$/, ''); }, cooldownLeft, ENDPOINT };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FreeForgeAI = api;
 })(typeof window !== 'undefined' ? window : globalThis);
