@@ -1,0 +1,791 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FreeForge - free Roblox UI kit builder</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font:15px Arial,sans-serif;background:#0d0f17;color:#e8ebff;display:flex;min-height:100vh}
+aside{width:300px;padding:18px;background:#141826;border-right:1px solid #262c44;overflow:auto}
+h1{font-size:22px;margin:0 0 2px;color:#00e5ff}small{color:#8f93b8}
+label{display:block;margin:14px 0 6px;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#8f93b8}
+select,input[type=text],input[type=number]{width:100%;padding:8px;border-radius:8px;border:1px solid #2d3555;background:#0d0f17;color:#fff}
+input[type=color]{width:100%;height:36px;border:1px solid #2d3555;border-radius:8px;background:#0d0f17}
+.chk{display:flex;gap:8px;align-items:center;margin:6px 0;font-weight:400;text-transform:none;letter-spacing:0;color:#e8ebff;font-size:14px}
+button.dl{display:block;width:100%;margin-top:8px;padding:11px;border:0;border-radius:8px;font-weight:700;cursor:pointer;background:#00e5ff;color:#06121a}
+button.dl.alt{background:#262c44;color:#e8ebff}
+main{flex:1;padding:18px;overflow:auto}
+#stage{background:#2a2f45 repeating-conic-gradient(#232840 0 25%,#2a2f45 0 50%) 0 0/24px 24px;border-radius:12px;display:inline-block}
+.tabs{margin:14px 0 6px}.tabs button{background:#1b2136;color:#e8ebff;border:1px solid #2d3555;padding:6px 12px;border-radius:8px;cursor:pointer;margin-right:6px}
+pre{background:#0a0c13;border:1px solid #262c44;border-radius:10px;padding:12px;max-height:260px;overflow:auto;font:12px monospace;white-space:pre-wrap;word-break:break-all}
+.note{background:#1b2136;border-radius:10px;padding:10px 12px;margin-top:12px;color:#aab0d8;font-size:13px;line-height:1.45}
+#top{position:fixed;top:0;left:0;right:0;height:44px;background:#0a0c13;border-bottom:1px solid #262c44;display:flex;align-items:center;gap:8px;padding:0 16px;z-index:9}#top b{color:#00e5ff;margin-right:12px}#top button{background:none;border:0;color:#aab0d8;padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:700}#top button.on{background:#1b2136;color:#fff}#top span{margin-left:auto;color:#8f93b8;font-size:12px}#wrap{display:flex;width:100%;margin-top:44px;min-height:calc(100vh - 44px)}.hid{display:none!important}canvas#cv{background:radial-gradient(circle at 50% 40%,#2b3252,#0d0f17);border-radius:12px;display:block}
+</style></head><body>
+<nav id="top"><b>FreeForge</b><button data-p="ui" class="on">UI kits</button><button data-p="m3d">3D models</button><button data-p="anim">Animation</button><button data-p="thumb">Thumbnails & icons</button><span>free, private, nothing uploaded</span></nav><div id="wrap"><aside id="p-ui">
+<h1>FreeForge</h1><small>Free Roblox UI kit builder. No account, no credits, nothing uploaded.</small>
+<label>Theme</label><select id="theme"></select>
+<label>Accent color</label><input type="color" id="accent">
+<label>Second color</label><input type="color" id="accent2">
+<label>Corner radius: <span id="rv"></span></label><input type="range" id="radius" min="0" max="30" style="width:100%">
+<label>Inventory grid (cols x rows)</label><div style="display:flex;gap:8px"><input type="number" id="cols" min="2" max="8" value="5"><input type="number" id="rows" min="1" max="8" value="4"></div>
+<label>Preview screen</label><select id="view"><option value="game">Gameplay (HUD, menu, dialog)</option><option value="inventory">Inventory</option><option value="shop">Shop</option><option value="all">Everything stacked</option></select><label>Include in export</label><div id="comps"></div>
+<label>Kit name</label><input type="text" id="kname" value="FreeForgeUI" maxlength="40">
+<label>Export</label>
+<button class="dl" id="dl-rbxmx">Download .rbxmx (Studio model)</button>
+<button class="dl alt" id="dl-lua">Download Luau script</button>
+<button class="dl alt" id="cp-lua">Copy Luau script</button>
+<div class="note"><b>Use it:</b> .rbxmx: in Studio right-click StarterGui, Insert from File. Luau: paste into a LocalScript in StarterPlayerScripts. Every part is a real editable Frame, TextButton, UICorner, UIStroke. No flat images.</div>
+</aside>
+<main id="m-ui"><div id="stage"></div>
+<div class="tabs"><button data-t="lua">Luau</button><button data-t="xml">.rbxmx</button></div><pre id="code"></pre></main>
+
+<aside id="p-m3d" class="hid"><h1>3D Models</h1><small>Parametric models built from parts. Same geometry feeds the preview, the GLB and the Roblox export.</small>
+<label>Model</label><select id="mdl"></select><label>Palette</label><select id="pal"></select>
+<label>Accent color</label><input type="color" id="m-acc" value="#d9a441"><label>Scale: <span id="msv">1</span></label><input type="range" id="msc" min="0.5" max="3" step="0.1" value="1" style="width:100%">
+<label>Variation seed</label><input type="number" id="seed" value="7"><label class="chk"><input type="checkbox" id="spin" checked> Spin animation</label><label class="chk"><input type="checkbox" id="bob"> Bob animation</label>
+<label>Export</label><button class="dl" id="dl-glb">Download .glb (any 3D tool, Roblox 3D importer)</button><button class="dl alt" id="dl-mrb">Download .rbxmx (Parts model)</button><button class="dl alt" id="dl-mlua">Download Luau (builds + animates)</button>
+<div class="note"><b>Honest scope:</b> blocky/low-poly parametric models (swords, trees, houses, chests, potions...), not free-form AI sculpts. GLB imports into Studio via the 3D Importer; the .rbxmx is real anchored Parts.</div></aside>
+<main id="m-m3d" class="hid"><canvas id="cv" width="960" height="540"></canvas><div class="tabs"><button id="m-info"></button></div><pre id="mcode"></pre></main>
+<aside id="p-anim" class="hid"><h1>Animation</h1><small>TweenService presets for UI, previewed live.</small>
+<label>Preset</label><select id="apre"></select><label>Easing</label><select id="aease"></select><label>Duration (s)</label><input type="number" id="adur" step="0.05" min="0.05" max="5" value="0.5">
+<button class="dl" id="aplay">Replay preview</button><button class="dl alt" id="dl-alua">Download Luau</button>
+<div class="note">The 3D tab exports spin and bob animation inside the GLB (glTF animation) and as a Luau Heartbeat script.</div></aside>
+<main id="m-anim" class="hid"><div id="astage" style="background:linear-gradient(135deg,#12121c,#000);width:960px;height:360px;border-radius:12px;position:relative;overflow:hidden"></div><pre id="acode"></pre></main>
+
+<aside id="p-thumb" class="hid"><h1>Thumbnails & Icons</h1><small>Game thumbnails and item icons from your 3D models. Exports PNG at 1920x1080 / 512x512.</small>
+<label>Title</label><input type="text" id="t-title" value="Sword Quest" maxlength="28"><label>Subtitle</label><input type="text" id="t-sub" value="New update!" maxlength="30">
+<label>Style</label><select id="t-style"></select><label>Hero model</label><select id="t-model"></select><label>Palette</label><select id="t-pal"></select>
+<label>Icon rarity</label><select id="t-rar"><option value="#9aa3b5">Common</option><option value="#4ade80">Uncommon</option><option value="#38bdf8">Rare</option><option value="#c084fc" selected>Epic</option><option value="#fbbf24">Legendary</option></select>
+<button class="dl" id="dl-thumb">Download thumbnail PNG</button><button class="dl alt" id="dl-icon">Download icon PNG</button>
+<div class="note">Made from our own procedural models and canvas drawing. Free to use commercially.</div></aside>
+<main id="m-thumb" class="hid"><canvas id="tc" width="1280" height="720" style="width:960px;height:540px;border-radius:12px"></canvas><div style="display:flex;gap:14px;margin-top:12px;align-items:center"><canvas id="ic" width="512" height="512" style="width:180px;height:180px"></canvas><small>Item icon (512x512, transparent corners)</small></div></main>
+</div>
+<script>/* FreeForge core: theme + component tree -> HTML preview / .rbxmx / Luau. No deps. */
+(function (root) {
+  'use strict';
+  const THEMES = {
+    neon:    { name:'Neon Night', bg:'#12121c', panel:'#1b1b2b', panel2:'#26263d', accent:'#00e5ff', accent2:'#ff3df2', text:'#f2f4ff', muted:'#8f93b8', good:'#3dff8b', bad:'#ff4d6d', radius:10, stroke:2, font:'GothamBold', gradient:true },
+    candy:   { name:'Candy Pop', bg:'#ffe6f2', panel:'#fff7fb', panel2:'#ffd1e8', accent:'#ff5fa8', accent2:'#7a5cff', text:'#43203a', muted:'#a0708f', good:'#2fc77a', bad:'#ff4466', radius:18, stroke:3, font:'FredokaOne', gradient:true },
+    medieval:{ name:'Medieval', bg:'#2b1d12', panel:'#3d2a1a', panel2:'#4f3622', accent:'#e0b04a', accent2:'#b5532f', text:'#f6e8c8', muted:'#b79b72', good:'#7fbf4a', bad:'#c2392e', radius:4, stroke:3, font:'Fantasy', gradient:false },
+    scifi:   { name:'Sci-Fi', bg:'#06121a', panel:'#0b1f2c', panel2:'#10303f', accent:'#4df2c8', accent2:'#3d8bff', text:'#dffcff', muted:'#6aa5b3', good:'#4df28a', bad:'#ff5a5a', radius:2, stroke:2, font:'Code', gradient:true },
+    light:   { name:'Clean Light', bg:'#eef1f6', panel:'#ffffff', panel2:'#e4e9f2', accent:'#3b6cff', accent2:'#00b894', text:'#1c2333', muted:'#7a849b', good:'#1fa865', bad:'#e5484d', radius:12, stroke:1, font:'GothamMedium', gradient:false }
+  };
+  const FONT_ENUM_NUM = { SourceSans:3, SourceSansBold:4, Arial:1, ArialBold:2 }; // numeric ids we are sure of
+  const FONT_FALLBACK = { GothamBold:'SourceSansBold', GothamMedium:'SourceSansBold', FredokaOne:'SourceSansBold', Fantasy:'SourceSansBold', Code:'SourceSans' };
+  const CSS_FONT = { GothamBold:'Montserrat,Arial,sans-serif', GothamMedium:'Montserrat,Arial,sans-serif', FredokaOne:'"Comic Sans MS","Arial Rounded MT Bold",sans-serif', Fantasy:'Georgia,serif', Code:'"Courier New",monospace', SourceSans:'Arial,sans-serif', SourceSansBold:'Arial,sans-serif' };
+
+  const U = (xs, xo, ys, yo) => ({ xs, xo, ys, yo });
+  const N = (cls, props, children) => ({ cls, props: props || {}, children: children || [] });
+  const hex2rgb = h => { h = h.replace('#',''); return [0,2,4].map(i => parseInt(h.substr(i,2),16)/255); };
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
+  const safeName = s => String(s).replace(/[^A-Za-z0-9_ ]/g,'').slice(0,48) || 'Item';
+
+  // ---- styling helpers ----
+  const mix = (h1,h2,k) => { const a=hex2rgb(h1), b=hex2rgb(h2); return '#'+a.map((x,i)=>Math.round((x+(b[i]-x)*k)*255).toString(16).padStart(2,'0')).join(''); };
+  const lighten = (h,k) => mix(h,'#ffffff',k), darken = (h,k) => mix(h,'#000000',k);
+  function deco(t, o) {
+    o = o || {};
+    const kids = [N('UICorner', { CornerRadius: { s:0, o: o.radius != null ? o.radius : t.radius } })];
+    if (o.stroke !== false) kids.push(N('UIStroke', { Color: o.strokeColor || t.accent, Thickness: o.strokeThickness || t.stroke, ApplyStrokeMode: 1 }));
+    if (o.gradient) kids.push(N('UIGradient', { c0: o.gradient[0], c1: o.gradient[1], Rotation: 90 }));
+    return kids;
+  }
+  function frame(t, name, size, pos, bg, extra, kids, dopts) {
+    return N('Frame', Object.assign({ Name:name, Size:size, Position:pos||U(0,0,0,0), BackgroundColor3:bg, BorderSizePixel:0 }, extra||{}),
+      deco(t, dopts).concat(kids||[]));
+  }
+  function shadowOf(t, node, off) {
+    off = off || 6; const p = node.props.Position;
+    return N('Frame', { Name:node.props.Name+'Shadow', Size:node.props.Size, Position:U(p.xs,p.xo,p.ys,p.yo+off), BackgroundColor3:'#000000', BackgroundTransparency:0.55, BorderSizePixel:0 },
+      [N('UICorner',{ CornerRadius:{ s:0, o:t.radius+2 } })]);
+  }
+  function label(t, name, text, size, pos, o) {
+    o = o || {};
+    return N('TextLabel', Object.assign({ Name:name, Text:text, Size:size, Position:pos||U(0,0,0,0), BackgroundTransparency:1,
+      TextColor3:o.color||t.text, Font:o.font||t.font, TextSize:o.textSize||18, TextXAlignment:o.align||'Center', TextYAlignment:'Center', BorderSizePixel:0 }, o.extra||{}));
+  }
+  function button(t, name, text, size, pos, kind) {
+    kind = kind || 'primary';
+    const bg = kind==='primary' ? t.accent : kind==='danger' ? t.bad : kind==='good' ? t.good : t.panel2;
+    const fg = (kind==='secondary') ? t.text : darken(bg,0.78);
+    const kids = deco(t, { stroke:true, strokeColor: kind==='secondary' ? t.accent : darken(bg,0.35), strokeThickness:2, gradient:[lighten(bg,0.28), darken(bg,0.18)] });
+    kids.push(N('Frame',{ Name:'Gloss', Size:U(1,-8,0.45,0), Position:U(0,4,0,3), BackgroundColor3:'#ffffff', BackgroundTransparency:0.84, BorderSizePixel:0, ZIndex:0 },[N('UICorner',{ CornerRadius:{ s:0, o:Math.max(2,t.radius-2) } })]));
+    return N('TextButton', { Name:name, Text:text, Size:size, Position:pos||U(0,0,0,0), BackgroundColor3:bg, TextColor3:fg, Font:t.font, TextSize:18, AutoButtonColor:true, BorderSizePixel:0 }, kids);
+  }
+  function bar(t, name, pct, color, size, pos, text, icon) {
+    return frame(t, name, size, pos, darken(t.panel2,0.4), {}, [
+      frame(t, 'Fill', U(clamp(pct,0,1),0,1,0), U(0,0,0,0), color, {}, [
+        N('Frame',{ Name:'Gloss', Size:U(1,-6,0.4,0), Position:U(0,3,0,2), BackgroundColor3:'#ffffff', BackgroundTransparency:0.8, BorderSizePixel:0 },[N('UICorner',{ CornerRadius:{ s:0, o:4 } })])
+      ], { stroke:false, gradient:[lighten(color,0.35), darken(color,0.2)] }),
+      label(t, 'Value', text||'', U(1,0,1,0), U(0,0,0,0), { textSize:14, extra:{ ZIndex:2 } })
+    ], { strokeThickness:1, strokeColor:darken(t.accent,0.2) });
+  }
+  const list = (dir, pad, align) => N('UIListLayout', { FillDirection: dir, Padding:{ s:0, o:pad }, SortOrder:2, HorizontalAlignment: align==null?0:align });
+  const pad = p => N('UIPadding', { PaddingTop:{s:0,o:p}, PaddingBottom:{s:0,o:p}, PaddingLeft:{s:0,o:p}, PaddingRight:{s:0,o:p} });
+  // panel with header bar, title, optional close, gradient body
+  function panel(t, name, size, pos, title, body, closable) {
+    const kids = [
+      N('Frame',{ Name:'Header', Size:U(1,0,0,48), Position:U(0,0,0,0), BackgroundColor3:t.accent, BorderSizePixel:0 },[
+        N('UICorner',{ CornerRadius:{ s:0, o:t.radius } }),
+        N('UIGradient',{ c0:lighten(t.accent,0.2), c1:darken(t.accent,0.35), Rotation:0 }),
+        N('Frame',{ Name:'HeaderFill', Size:U(1,0,0,t.radius+2), Position:U(0,0,1,-(t.radius+2)), BackgroundColor3:darken(t.accent,0.2), BorderSizePixel:0 },[
+          N('UIGradient',{ c0:lighten(t.accent,0.2), c1:darken(t.accent,0.35), Rotation:0 }) ])
+      ]),
+      label(t,'Title',title,U(1,-80,0,48),U(0,18,0,0),{ align:'Left', textSize:24, color:darken(t.accent,0.85) })
+    ];
+    if (closable) kids.push(button(t,'CloseButton','X',U(0,32,0,32),U(1,-42,0,8),'danger'));
+    kids.push.apply(kids, body);
+    const f = frame(t, name, size, pos, t.panel, { ClipsDescendants:false }, kids, { strokeThickness:t.stroke+1, strokeColor:t.accent, gradient:[lighten(t.panel,0.06), darken(t.panel,0.18)] });
+    return [shadowOf(t, f, 8), f];
+  }
+
+  // ---- components ----
+  const RARITY = ['#9aa3b5','#4ade80','#38bdf8','#c084fc','#fbbf24'];
+  const COMPONENTS = {
+    hud: { name:'HUD (health, stamina, coins)', build(t, o) {
+      const f = frame(t,'HUD',U(0,330,0,124),U(0,16,1,-140),t.panel,{ BackgroundTransparency:0.05 },[
+        frame(t,'Avatar',U(0,52,0,52),U(0,12,0,12),t.panel2,{},[label(t,'Face','\u263A',U(1,0,1,0),null,{ textSize:30 })],{ radius:26, strokeThickness:3 }),
+        label(t,'Name','Player',U(0,200,0,20),U(0,74,0,10),{ align:'Left', textSize:16, color:t.muted }),
+        label(t,'Level','Lv 12',U(0,60,0,20),U(1,-72,0,10),{ align:'Right', textSize:16, color:t.accent }),
+        bar(t,'HealthBar',0.82,t.bad,U(1,-86,0,24),U(0,74,0,34),'\u2665 82 / 100'),
+        bar(t,'StaminaBar',0.55,t.good,U(1,-86,0,16),U(0,74,0,64),'\u26A1'),
+        label(t,'Coins','\u25CF 1,250',U(1,-24,0,28),U(0,12,0,88),{ align:'Left', color:'#fbbf24', textSize:20 })
+      ],{ gradient:[lighten(t.panel,0.05), darken(t.panel,0.2)], strokeThickness:t.stroke+1 });
+      return [shadowOf(t,f,5), f];
+    }},
+    inventory: { name:'Inventory grid', build(t, o) {
+      const cols = clamp(o.cols||5,2,8), rows = clamp(o.rows||4,1,8), cell = 68, gap = 8;
+      const w = cols*cell+(cols-1)*gap+32, h = rows*cell+(rows-1)*gap+32+56+40;
+      const items = [['\u2694',3,'3'],['\u271A',1,'12'],['\u2605',2,''],['\u26E8',4,''],['\u25C6',3,'5'],['\u2709',0,'']];
+      const slots = [];
+      for (let i=1;i<=cols*rows;i++) {
+        const it = items[i-1], rc = it ? RARITY[it[1]] : t.muted;
+        const k = [];
+        if (it) { k.push(label(t,'Icon',it[0],U(1,0,1,0),null,{ textSize:30 })); if (it[2]) k.push(label(t,'Qty',it[2],U(0,26,0,16),U(1,-30,1,-18),{ align:'Right', textSize:13, color:t.text, font:t.font })); 
+          k.push(N('Frame',{ Name:'Rarity', Size:U(1,-12,0,4), Position:U(0,6,1,-8), BackgroundColor3:rc, BorderSizePixel:0 },[N('UICorner',{ CornerRadius:{ s:0, o:2 } })])); }
+        slots.push(N('TextButton',{ Name:'Slot'+i, Text:'', Size:U(0,cell,0,cell), BackgroundColor3:darken(t.panel2,0.25), Font:t.font, TextSize:13, LayoutOrder:i, BorderSizePixel:0 },
+          deco(t,{ strokeThickness:2, strokeColor: it?rc:darken(t.muted,0.4), radius:Math.max(3,t.radius-3), gradient:[lighten(t.panel2,0.04), darken(t.panel2,0.4)] }).concat(k)));
+      }
+      return panel(t,'Inventory',U(0,w,0,h),U(0.5,-w/2,0.5,-h/2),'Inventory',[
+        N('Frame',{ Name:'Grid', Size:U(1,-32,1,-110), Position:U(0,16,0,64), BackgroundTransparency:1, BorderSizePixel:0 },
+          [N('UIGridLayout',{ CellSize:U(0,cell,0,cell), CellPadding:U(0,gap,0,gap), SortOrder:2 })].concat(slots)),
+        label(t,'Capacity','6 / '+(cols*rows)+' slots',U(0.5,0,0,24),U(0,16,1,-38),{ align:'Left', textSize:15, color:t.muted }),
+        button(t,'SortButton','Sort',U(0,90,0,30),U(1,-106,1,-40),'secondary')
+      ], true);
+    }},
+    shop: { name:'Shop list', build(t, o) {
+      const items = [['\u27A4','Speed Boost',250,1],['\u2B06','Double Jump',500,2],['\u25CF','Pet Egg',1200,3],['\u2655','VIP Pass',5000,4]];
+      const rows = items.map((it,i)=> frame(t,'Item'+(i+1),U(1,0,0,62),U(0,0,0,0),darken(t.panel2,0.1),{ LayoutOrder:i+1 },[
+        frame(t,'IconBox',U(0,46,0,46),U(0,8,0.5,-23),darken(t.panel2,0.35),{},[label(t,'Icon',it[0],U(1,0,1,0),null,{ textSize:26 })],{ strokeThickness:2, strokeColor:RARITY[it[3]], radius:Math.max(3,t.radius-3) }),
+        label(t,'ItemName',it[1],U(0.45,0,0,24),U(0,64,0,10),{ align:'Left', textSize:18 }),
+        label(t,'Price','\u25CF '+it[2],U(0.45,0,0,20),U(0,64,0,34),{ align:'Left', color:'#fbbf24', textSize:15 }),
+        button(t,'Buy','Buy',U(0,84,0,36),U(1,-96,0.5,-18),'good')
+      ],{ strokeThickness:1, strokeColor:darken(t.muted,0.3), gradient:[lighten(t.panel2,0.03), darken(t.panel2,0.25)] }));
+      const h = 64+16+items.length*70;
+      return panel(t,'Shop',U(0,470,0,h),U(0.5,-235,0.5,-h/2),'Shop',[
+        N('Frame',{ Name:'List', Size:U(1,-32,1,-72), Position:U(0,16,0,64), BackgroundTransparency:1, BorderSizePixel:0 }, [list(1,8)].concat(rows))
+      ], true);
+    }},
+    buttons: { name:'Button pack', build(t, o) {
+      const btns = [button(t,'Play','\u25B6  PLAY',U(1,-24,0,46),null,'primary'), button(t,'Shop','SHOP',U(1,-24,0,46),null,'good'), button(t,'Settings','SETTINGS',U(1,-24,0,46),null,'secondary'), button(t,'Quit','QUIT',U(1,-24,0,46),null,'danger')];
+      btns.forEach((n,i)=>{ n.props.LayoutOrder=i; });
+      const f = frame(t,'Buttons',U(0,220,0,252),U(0,16,0,16),t.panel,{},[
+        N('UIPadding',{ PaddingTop:{s:0,o:14}, PaddingBottom:{s:0,o:14}, PaddingLeft:{s:0,o:12}, PaddingRight:{s:0,o:12} }), list(1,10,1)
+      ].concat(btns),{ gradient:[lighten(t.panel,0.06), darken(t.panel,0.2)], strokeThickness:t.stroke+1 });
+      return [shadowOf(t,f,6), f];
+    }},
+    quest: { name:'Quest / dialog', build(t, o) {
+      const f = frame(t,'Dialog',U(0,430,0,210),U(1,-446,1,-226),t.panel,{},[
+        frame(t,'Portrait',U(0,64,0,64),U(0,14,0,14),t.panel2,{},[label(t,'Face','\u2726',U(1,0,1,0),null,{ textSize:38 })],{ radius:12, strokeThickness:3 }),
+        label(t,'Speaker','Old Guide',U(1,-100,0,26),U(0,90,0,14),{ align:'Left', textSize:22, color:t.accent }),
+        label(t,'Tag','QUEST  \u2022  Easy',U(1,-100,0,18),U(0,90,0,40),{ align:'Left', textSize:13, color:t.muted }),
+        label(t,'Message','Bring me 5 glowing crystals from the cave and I will reward you.',U(1,-32,0,56),U(0,16,0,86),{ align:'Left', textSize:17, extra:{ TextWrapped:true, TextYAlignment:'Top' } }),
+        button(t,'Accept','Accept',U(0,124,0,40),U(1,-268,1,-54),'good'),
+        button(t,'Decline','Decline',U(0,124,0,40),U(1,-140,1,-54),'secondary')
+      ],{ gradient:[lighten(t.panel,0.06), darken(t.panel,0.2)], strokeThickness:t.stroke+1 });
+      return [shadowOf(t,f,8), f];
+    }}
+  };
+
+  function buildKit(opts) {
+    opts = opts || {};
+    const base = THEMES[opts.theme] || THEMES.neon;
+    const t = Object.assign({}, base);
+    if (opts.accent && /^#[0-9a-fA-F]{6}$/.test(opts.accent)) t.accent = opts.accent;
+    if (opts.accent2 && /^#[0-9a-fA-F]{6}$/.test(opts.accent2)) t.accent2 = opts.accent2;
+    if (opts.radius != null) t.radius = clamp(+opts.radius||0,0,40);
+    const comps = (opts.components && opts.components.length) ? opts.components : Object.keys(COMPONENTS);
+    const kids = [].concat.apply([], comps.filter(k=>COMPONENTS[k]).map(k => COMPONENTS[k].build(t, opts)));
+    return N('ScreenGui', { Name: safeName(opts.name||'FreeForgeUI'), ResetOnSpawn:false, ZIndexBehavior:1 }, kids);
+  }
+
+  // ---- RBXMX ----
+  let ref;
+  function propXml(cls, k, v) {
+    const n = esc(k);
+    if (k==='Size'||k==='Position'||k==='CellSize'||k==='CellPadding') return `<UDim2 name="${n}"><XS>${v.xs}</XS><XO>${v.xo}</XO><YS>${v.ys}</YS><YO>${v.yo}</YO></UDim2>`;
+    if (k==='CornerRadius'||k==='Padding'||k.indexOf('Padding')===0) return `<UDim name="${n}"><S>${v.s}</S><O>${v.o}</O></UDim>`;
+    if (/Color3$/.test(k) || (k==='Color' && typeof v==='string')) { const c = hex2rgb(v); return `<Color3 name="${n}"><R>${c[0]}</R><G>${c[1]}</G><B>${c[2]}</B></Color3>`; }
+    if (k==='Font') { const f = FONT_ENUM_NUM[v]!=null ? v : (FONT_FALLBACK[v]||'SourceSansBold'); return `<token name="Font">${FONT_ENUM_NUM[f]}</token>`; }
+    if (k==='TextXAlignment') return `<token name="${n}">${{Left:0,Right:1,Center:2}[v]}</token>`;
+    if (k==='TextYAlignment') return `<token name="${n}">${{Top:0,Center:1,Bottom:2}[v]}</token>`;
+    if (k==='FillDirection'||k==='SortOrder'||k==='ApplyStrokeMode'||k==='HorizontalAlignment'||k==='ZIndexBehavior') return `<token name="${n}">${v}</token>`;
+    if (typeof v==='boolean') return `<bool name="${n}">${v}</bool>`;
+    if (typeof v==='string') return `<string name="${n}">${esc(v)}</string>`;
+    if (k==='BorderSizePixel'||k==='ZIndex'||k==='LayoutOrder'||k==='TextSize') return `<int name="${n}">${Math.round(v)}</int>`;
+    return `<float name="${n}">${v}</float>`;
+  }
+  function itemXml(node) {
+    let props = '';
+    const p = node.props;
+    if (node.cls==='UIGradient') {
+      const a=hex2rgb(p.c0), b=hex2rgb(p.c1);
+      props += `<ColorSequence name="Color">0 ${a.join(' ')} 0 1 ${b.join(' ')} 0 </ColorSequence>`;
+      props += `<float name="Rotation">${p.Rotation||0}</float>`;
+    } else {
+      // Name first, stable order
+      if (p.Name!=null) props += propXml(node.cls,'Name',p.Name);
+      Object.keys(p).forEach(k => { if (k!=='Name' && p[k]!==undefined && p[k]!==null) props += propXml(node.cls,k,p[k]); });
+    }
+    const id = 'RBX'+(++ref);
+    return `<Item class="${node.cls}" referent="${id}"><Properties>${props}</Properties>${node.children.map(itemXml).join('')}</Item>`;
+  }
+  function toRbxmx(tree) { ref = 0; return `<roblox version="4"><Meta name="ExplicitAutoJoints">true</Meta>${itemXml(tree)}</roblox>`; }
+
+  // ---- Luau ----
+  const lz = n => Number(n.toFixed ? (+n).toFixed(4) : n);
+  function luaVal(k, v, theme) {
+    if (k==='Size'||k==='Position'||k==='CellSize'||k==='CellPadding') return `UDim2.new(${lz(v.xs)}, ${lz(v.xo)}, ${lz(v.ys)}, ${lz(v.yo)})`;
+    if (/Padding(Top|Bottom|Left|Right)$|^CornerRadius$|^Padding$/.test(k)) return `UDim.new(${lz(v.s)}, ${lz(v.o)})`;
+    if (/Color3$/.test(k) || (k==='Color' && typeof v==='string')) return `Color3.fromHex("${v}")`;
+    if (k==='Font') return `Enum.Font.${/^[A-Za-z0-9]+$/.test(v)?v:'SourceSansBold'}`;
+    if (k==='TextXAlignment') return `Enum.TextXAlignment.${v}`;
+    if (k==='TextYAlignment') return `Enum.TextYAlignment.${v}`;
+    if (k==='FillDirection') return `Enum.FillDirection.${v===0?'Horizontal':'Vertical'}`;
+    if (k==='SortOrder') return `Enum.SortOrder.${v===2?'LayoutOrder':'Name'}`;
+    if (k==='HorizontalAlignment') return `Enum.HorizontalAlignment.${['Left','Center','Right'][v]||'Left'}`;
+    if (k==='ApplyStrokeMode') return v===1?'Enum.ApplyStrokeMode.Border':'Enum.ApplyStrokeMode.Contextual';
+    if (k==='ZIndexBehavior') return v===1?'Enum.ZIndexBehavior.Sibling':'Enum.ZIndexBehavior.Global';
+    if (typeof v==='boolean') return String(v);
+    if (typeof v==='string') return JSON.stringify(v);
+    return String(lz(v));
+  }
+  function toLuau(tree) {
+    let out = [], n = 0;
+    out.push('-- Generated by FreeForge. Paste into a LocalScript in StarterPlayerScripts (or run in the Studio command bar with the Players.LocalPlayer line adjusted).');
+    out.push('local Players = game:GetService("Players")');
+    out.push('local TweenService = game:GetService("TweenService")');
+    out.push('local player = Players.LocalPlayer');
+    out.push('local playerGui = player:WaitForChild("PlayerGui")');
+    out.push('local function make(class, props, parent)');
+    out.push('\tlocal inst = Instance.new(class)');
+    out.push('\tfor k, v in pairs(props) do inst[k] = v end');
+    out.push('\tinst.Parent = parent');
+    out.push('\treturn inst');
+    out.push('end');
+    function emit(node, parentVar, depth) {
+      const v = 'o' + (++n);
+      const p = node.props; const parts = [];
+      if (node.cls==='UIGradient') {
+        out.push(`local ${v} = make("UIGradient", { Color = ColorSequence.new(Color3.fromHex("${p.c0}"), Color3.fromHex("${p.c1}")), Rotation = ${p.Rotation||0} }, ${parentVar})`);
+      } else {
+        Object.keys(p).forEach(k => { if (p[k]!==undefined && p[k]!==null) parts.push(`${k} = ${luaVal(k,p[k])}`); });
+        out.push(`local ${v} = make("${node.cls}", { ${parts.join(', ')} }, ${parentVar})`);
+      }
+      node.children.forEach(c => emit(c, v, depth+1));
+      return v;
+    }
+    out.push('local gui = make("ScreenGui", { Name = ' + JSON.stringify(tree.props.Name) + ', ResetOnSpawn = false, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, playerGui)');
+    // Luau has a 200 local-variable limit per function: wrap each top-level component in its own do-block.
+    tree.children.forEach(c => { out.push('do'); const before = out.length; emit(c, 'gui', 1); out.push('end'); });
+    out.push('');
+    out.push('-- Behaviour stubs');
+    out.push('for _, d in ipairs(gui:GetDescendants()) do');
+    out.push('\tif d:IsA("TextButton") and d.Name == "CloseButton" then');
+    out.push('\t\td.MouseButton1Click:Connect(function() d.Parent.Visible = false end)');
+    out.push('\tend');
+    out.push('\tif d:IsA("TextButton") then');
+    out.push('\t\tlocal base = d.Size');
+    out.push('\t\td.MouseEnter:Connect(function() TweenService:Create(d, TweenInfo.new(0.12), { Size = UDim2.new(base.X.Scale, base.X.Offset + 4, base.Y.Scale, base.Y.Offset + 2) }):Play() end)');
+    out.push('\t\td.MouseLeave:Connect(function() TweenService:Create(d, TweenInfo.new(0.12), { Size = base }):Play() end)');
+    out.push('\tend');
+    out.push('end');
+    return out.join('\n') + '\n';
+  }
+
+  // ---- HTML preview ----
+  function toHtml(tree, w, h) {
+    function css(node, parentLayout) {
+      const p = node.props; let s = ''; 
+      const sz = p.Size, po = p.Position;
+      const kidsLayout = node.children.find(c => c.cls==='UIListLayout' || c.cls==='UIGridLayout');
+      const inFlow = parentLayout != null;
+      if (sz) s += `width:calc(${sz.xs*100}% + ${sz.xo}px);height:calc(${sz.ys*100}% + ${sz.yo}px);`;
+      if (!inFlow && po) s += `position:absolute;left:calc(${po.xs*100}% + ${po.xo}px);top:calc(${po.ys*100}% + ${po.yo}px);`;
+      if (inFlow) s += 'position:relative;flex:none;';
+      s += 'box-sizing:border-box;';
+      if (p.BackgroundColor3 && p.BackgroundTransparency!==1) {
+        const c = hex2rgb(p.BackgroundColor3).map(x=>Math.round(x*255)); const a = 1-(p.BackgroundTransparency||0);
+        s += `background:rgba(${c.join(',')},${a});`;
+      }
+      if (node.cls==='TextLabel'||node.cls==='TextButton') {
+        s += `color:${p.TextColor3};font:${p.TextSize||14}px ${CSS_FONT[p.Font]||'Arial'};font-weight:${/Bold/.test(p.Font)?700:500};display:flex;align-items:${p.TextYAlignment==='Top'?'flex-start':'center'};justify-content:${p.TextXAlignment==='Left'?'flex-start':p.TextXAlignment==='Right'?'flex-end':'center'};`;
+        if (!p.TextWrapped) s += 'white-space:nowrap;'; else s += 'text-align:left;';
+        if (node.cls==='TextButton') s += 'cursor:pointer;';
+      }
+      if (p.ZIndex) s += `z-index:${p.ZIndex};`;
+      node.children.forEach(c => {
+        if (c.cls==='UICorner') s += `border-radius:${c.props.CornerRadius.o}px;`;
+        if (c.cls==='UIStroke') s += `box-shadow:inset 0 0 0 ${c.props.Thickness}px ${c.props.Color};`;
+        if (c.cls==='UIGradient') s += `background-image:linear-gradient(${c.props.Rotation===0?'to right':'to bottom'},${c.props.c0},${c.props.c1});`;
+        if (c.cls==='UIPadding') s += `padding:${c.props.PaddingTop.o}px ${c.props.PaddingRight.o}px ${c.props.PaddingBottom.o}px ${c.props.PaddingLeft.o}px;`;
+      });
+      if (kidsLayout && kidsLayout.cls==='UIListLayout') s += `display:flex;flex-direction:${kidsLayout.props.FillDirection===0?'row':'column'};gap:${kidsLayout.props.Padding.o}px;`;
+      if (kidsLayout && kidsLayout.cls==='UIGridLayout') { const cp = kidsLayout.props.CellPadding; s += `display:flex;flex-wrap:wrap;align-content:flex-start;gap:${cp.yo}px ${cp.xo}px;`; }
+      return s;
+    }
+    function html(node, parentLayout) {
+      if (/^UI/.test(node.cls)) return '';
+      const tag = node.cls==='TextButton' ? 'button' : 'div';
+      const layout = node.children.find(c => c.cls==='UIListLayout' || c.cls==='UIGridLayout');
+      const inner = (node.props.Text!=null ? esc(node.props.Text) : '') + node.children.map(c => html(c, layout ? layout.cls : null)).join('');
+      return `<${tag} data-n="${esc(node.props.Name||'')}" style="${esc(css(node, parentLayout))}border:0;margin:0;">${inner}</${tag}>`;
+    }
+    return `<div class="ff-screen" style="position:relative;width:${w||960}px;height:${h||540}px;overflow:hidden;">${tree.children.map(c=>html(c,null)).join('')}</div>`;
+  }
+
+  // ---- validation used by tests ----
+  function validateRbxmx(xml) {
+    const errs = []; const stack = [];
+    const re = /<(\/?)([A-Za-z0-9]+)([^>]*?)(\/?)>/g; let m;
+    while ((m = re.exec(xml))) {
+      if (m[4]==='/') continue;
+      if (m[1]==='/') { const top = stack.pop(); if (top!==m[2]) { errs.push('mismatch '+top+' vs '+m[2]); break; } }
+      else stack.push(m[2]);
+    }
+    if (stack.length) errs.push('unclosed: '+stack.join(','));
+    const refs = (xml.match(/referent="([^"]+)"/g)||[]).map(x=>x);
+    if (new Set(refs).size !== refs.length) errs.push('duplicate referents');
+    if (/NaN|undefined|Infinity/.test(xml)) errs.push('bad value NaN/undefined');
+    return errs;
+  }
+
+  const api = { THEMES, COMPONENTS, buildKit, toRbxmx, toLuau, toHtml, validateRbxmx };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FreeForge = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script><script>/* FreeForge 3D: parametric models from primitives -> software preview, GLB (glTF 2.0 binary), .rbxmx Parts, Luau. No deps. */
+(function (root) {
+  'use strict';
+  const PALETTES = {
+    fantasy: { a:'#c9ced6', b:'#8a5a2b', c:'#d9a441', d:'#4f9d3a', e:'#b0472f', glow:'#7be0ff' },
+    neon:    { a:'#1d2236', b:'#2e3558', c:'#00e5ff', d:'#3dff8b', e:'#ff3df2', glow:'#00e5ff' },
+    candy:   { a:'#ffd1e8', b:'#ff8fc4', c:'#ffe066', d:'#7be0a8', e:'#9a7bff', glow:'#ffffff' },
+    dark:    { a:'#3a3f4b', b:'#262a33', c:'#b8892f', d:'#2f5d3a', e:'#8c2f39', glow:'#ff7a45' }
+  };
+  const hex2rgb = h => { h=h.replace('#',''); return [0,2,4].map(i=>parseInt(h.substr(i,2),16)/255); };
+  function rng(seed){ let s=(seed>>>0)||1; return () => ((s = (s*1664525 + 1013904223)>>>0) / 4294967296); }
+  const P = (t,pos,size,color,o) => Object.assign({ t, pos, size, rot:[0,0,0], color, mat:'Plastic' }, o||{});
+
+  // ---- model generators: return array of primitives. Units = studs, Y up, origin at base center ----
+  const MODELS = {
+    sword: { name:'Sword', build(p) { const c=p.pal; return [
+      P('box',[0,3.2,0],[0.5,5.4,0.12],c.a,{ mat:'Metal' }), P('box',[0,0.2,0],[2.2,0.3,0.4],c.c,{ mat:'Metal' }),
+      P('cyl',[0,-0.8,0],[0.35,1.6,0.35],c.b,{ mat:'Wood' }), P('ball',[0,-1.75,0],[0.6,0.6,0.6],c.c,{ mat:'Metal' }),
+      P('box',[0,6.0,0],[0.3,0.4,0.1],c.a,{ mat:'Metal', rot:[0,0,45] }), P('box',[0,3.2,0],[0.12,4.6,0.14],c.glow,{ mat:'Neon' }) ].map(m=>{ m.pos[1]+=1.8; return m; }); } },
+    tree: { name:'Tree', build(p) { const c=p.pal, r=rng(p.seed); const out=[ P('cyl',[0,1.5,0],[1.2,3,1.2],c.b,{ mat:'Wood' }) ];
+      const n = 4; for (let i=0;i<n;i++) { const w = 6 - i*1.1 + r()*0.5; out.push(P('cyl',[ (r()-.5)*0.3, 3.4+i*1.5, (r()-.5)*0.3 ],[w,1.7,w],i%2? c.d : mix(c.d,'#ffffff',0.12),{})); }
+      out.push(P('ball',[0,3.4+n*1.5,0],[1.4,1.4,1.4],c.d,{})); return out; } },
+    house: { name:'House', build(p) { const c=p.pal; return [
+      P('box',[0,2,0],[8,4,6],c.a,{}), P('box',[0,0,0].map((v,i)=>i==1?4.6:0),[8.8,0.3,6.8],c.b,{ mat:'Wood' }),
+      P('box',[-2.1,5.3,0],[5,0.5,7.2],c.e,{ rot:[0,0,32] }), P('box',[2.1,5.3,0],[5,0.5,7.2],c.e,{ rot:[0,0,-32] }),
+      P('box',[0,1.3,3.01],[1.6,2.6,0.2],c.b,{ mat:'Wood' }), P('ball',[0.5,1.3,3.15],[0.25,0.25,0.25],c.c,{ mat:'Metal' }),
+      P('box',[-2.4,2.6,3.02],[1.4,1.4,0.15],c.glow,{ mat:'Neon' }), P('box',[2.4,2.6,3.02],[1.4,1.4,0.15],c.glow,{ mat:'Neon' }),
+      P('box',[2.8,6.6,-1.2],[1,2.2,1],c.b,{}) ]; } },
+    crate: { name:'Crate', build(p) { const c=p.pal; const o=[ P('box',[0,1.5,0],[3,3,3],c.b,{ mat:'Wood' }) ];
+      [[-1.4,0],[1.4,0]].forEach(a=>{ o.push(P('box',[a[0],1.5,0],[0.3,3.1,3.1],c.c,{ mat:'Metal' })); o.push(P('box',[0,1.5,a[0]],[3.1,3.1,0.3],c.c,{ mat:'Metal' })); });
+      o.push(P('box',[0,3.05,0],[3.2,0.2,3.2],c.c,{ mat:'Metal' })); return o; } },
+    potion: { name:'Potion', build(p) { const c=p.pal; return [
+      P('ball',[0,1.5,0],[3,3,3],c.glow,{ mat:'Glass' }), P('ball',[0,1.2,0],[2.4,2.0,2.4],c.e,{ mat:'Neon' }),
+      P('cyl',[0,3.4,0],[1.1,1.8,1.1],c.glow,{ mat:'Glass' }), P('cyl',[0,4.5,0],[1.2,0.5,1.2],c.b,{ mat:'Wood' }) ]; } },
+    crystal: { name:'Crystal cluster', build(p) { const c=p.pal, r=rng(p.seed), o=[]; const cols=[c.glow,c.e,c.d];
+      for (let i=0;i<7;i++){ const h=2+r()*(i==0?5:3), w=0.7+r()*0.5, a=r()*6.28, d=i==0?0:1+r()*1.5; o.push(P('box',[Math.cos(a)*d,h/2,Math.sin(a)*d],[w,h,w],cols[i%3],{ mat:'Neon', rot:[(r()-.5)*24,r()*90,(r()-.5)*24] })); }
+      o.push(P('cyl',[0,0.25,0],[5,0.5,5],c.a,{ mat:'Metal' })); return o; } },
+    chest: { name:'Treasure chest', build(p) { const c=p.pal; return [
+      P('box',[0,1.1,0],[4,2.2,2.6],c.b,{ mat:'Wood' }), P('cyl',[0,2.2,0],[2.6,4,2.6],c.b,{ mat:'Wood', rot:[0,0,90] }),
+      P('box',[0,1.3,1.35],[4.1,0.35,0.15],c.c,{ mat:'Metal' }), P('box',[1.9,1.4,0],[0.3,2.8,2.7],c.c,{ mat:'Metal' }), P('box',[-1.9,1.4,0],[0.3,2.8,2.7],c.c,{ mat:'Metal' }),
+      P('box',[0,2.2,1.4],[0.7,0.9,0.2],c.c,{ mat:'Metal' }), P('ball',[0,2.1,1.5],[0.25,0.25,0.25],c.glow,{ mat:'Neon' }) ]; } },
+    tower: { name:'Tower', build(p) { const c=p.pal, o=[ P('cyl',[0,5,0],[4.4,10,4.4],c.a,{}) , P('cyl',[0,10.4,0],[5.2,0.8,5.2],c.b,{}) ];
+      for (let i=0;i<8;i++){ const a=i/8*6.283; o.push(P('box',[Math.cos(a)*2.3,11.2,Math.sin(a)*2.3],[0.9,1.2,0.9],c.a,{ rot:[0,-a*57.3,0] })); }
+      o.push(P('cyl',[0,12.6,0],[3.2,1.6,3.2],c.e,{})); o.push(P('cyl',[0,14,0],[0.25,3,0.25],c.b,{})); o.push(P('box',[0.7,14.8,0],[1.4,0.9,0.1],c.c,{}));
+      o.push(P('box',[0,1.4,2.15],[1.4,2.8,0.2],c.b,{ mat:'Wood' })); o.push(P('box',[0,6.5,2.2],[0.7,1.6,0.15],c.glow,{ mat:'Neon' })); return o; } },
+    coin: { name:'Coin', build(p) { const c=p.pal; return [ P('cyl',[0,1.6,0],[3,0.35,3],c.c,{ mat:'Metal', rot:[90,0,0] }), P('cyl',[0,1.6,0],[2.2,0.4,2.2],c.glow,{ mat:'Neon', rot:[90,0,0] }), P('box',[0,1.6,0.2],[0.4,1.4,0.1],c.c,{ mat:'Metal' }) ]; } }
+  };
+  function mix(a,b,k){ const x=hex2rgb(a), y=hex2rgb(b); return '#'+x.map((v,i)=>Math.round((v+(y[i]-v)*k)*255).toString(16).padStart(2,'0')).join(''); }
+  function buildModel(opts) {
+    opts = opts || {}; const m = MODELS[opts.model] || MODELS.sword;
+    const pal = Object.assign({}, PALETTES[opts.palette] || PALETTES.fantasy);
+    if (opts.accent && /^#[0-9a-fA-F]{6}$/.test(opts.accent)) pal.c = opts.accent;
+    const scale = Math.min(4, Math.max(0.25, +opts.scale || 1));
+    const prims = m.build({ pal, seed: opts.seed==null?7:+opts.seed|0 }).map(q => ({ t:q.t, pos:q.pos.map(v=>v*scale), size:q.size.map(v=>v*scale), rot:q.rot.slice(), color:q.color, mat:q.mat }));
+    return { name:(m.name||'Model').replace(/[^A-Za-z0-9 ]/g,''), prims, spin: opts.spin !== false, bob: !!opts.bob };
+  }
+
+  // ---- math ----
+  const D = Math.PI/180;
+  function rotMat(rx,ry,rz) { // R = Rx * Ry * Rz (same order as CFrame.Angles), row-major 3x3
+    const cx=Math.cos(rx*D), sx=Math.sin(rx*D), cy=Math.cos(ry*D), sy=Math.sin(ry*D), cz=Math.cos(rz*D), sz=Math.sin(rz*D);
+    const Rx=[1,0,0, 0,cx,-sx, 0,sx,cx], Ry=[cy,0,sy, 0,1,0, -sy,0,cy], Rz=[cz,-sz,0, sz,cz,0, 0,0,1];
+    return mul3(mul3(Rx,Ry),Rz);
+  }
+  function mul3(a,b){ const o=new Array(9); for(let i=0;i<3;i++)for(let j=0;j<3;j++){ o[i*3+j]=a[i*3]*b[j]+a[i*3+1]*b[3+j]+a[i*3+2]*b[6+j]; } return o; }
+  const apply = (m,v) => [m[0]*v[0]+m[1]*v[1]+m[2]*v[2], m[3]*v[0]+m[4]*v[1]+m[5]*v[2], m[6]*v[0]+m[7]*v[1]+m[8]*v[2]];
+
+  // ---- geometry (local space, size applied) ----
+  function geom(prim) {
+    const [sx,sy,sz] = prim.size; let pos=[], nor=[], idx=[];
+    const quad = (a,b,c,d,n) => { const o=pos.length/3; [a,b,c,d].forEach(v=>{ pos.push(v[0],v[1],v[2]); nor.push(n[0],n[1],n[2]); }); idx.push(o,o+1,o+2,o,o+2,o+3); };
+    if (prim.t==='box') {
+      const x=sx/2,y=sy/2,z=sz/2;
+      quad([x,-y,-z],[x,y,-z],[x,y,z],[x,-y,z],[1,0,0]); quad([-x,-y,z],[-x,y,z],[-x,y,-z],[-x,-y,-z],[-1,0,0]);
+      quad([-x,y,-z],[-x,y,z],[x,y,z],[x,y,-z],[0,1,0]); quad([-x,-y,z],[-x,-y,-z],[x,-y,-z],[x,-y,z],[0,-1,0]);
+      quad([-x,-y,z],[x,-y,z],[x,y,z],[-x,y,z],[0,0,1]); quad([x,-y,-z],[-x,-y,-z],[-x,y,-z],[x,y,-z],[0,0,-1]);
+    } else if (prim.t==='cyl') { // axis Y, diameter sx/sz, height sy
+      const S=20, rx=sx/2, rz=sz/2, y=sy/2;
+      for (let i=0;i<S;i++){ const a0=i/S*6.2832, a1=(i+1)/S*6.2832, am=(a0+a1)/2;
+        const p0=[Math.cos(a0)*rx,0,Math.sin(a0)*rz], p1=[Math.cos(a1)*rx,0,Math.sin(a1)*rz];
+        const o=pos.length/3; pos.push(p0[0],-y,p0[2], p1[0],-y,p1[2], p1[0],y,p1[2], p0[0],y,p0[2]);
+        [a0,a1,a1,a0].forEach(a=>nor.push(Math.cos(a),0,Math.sin(a))); idx.push(o,o+2,o+1,o,o+3,o+2);
+        const c=pos.length/3; pos.push(0,y,0,p0[0],y,p0[2],p1[0],y,p1[2]); nor.push(0,1,0,0,1,0,0,1,0); idx.push(c,c+2,c+1);
+        const d=pos.length/3; pos.push(0,-y,0,p0[0],-y,p0[2],p1[0],-y,p1[2]); nor.push(0,-1,0,0,-1,0,0,-1,0); idx.push(d,d+1,d+2); }
+    } else { // ball
+      const LA=10, LO=16, rx=sx/2, ry=sy/2, rz=sz/2;
+      for (let i=0;i<=LA;i++){ const th=i/LA*Math.PI; for (let j=0;j<=LO;j++){ const ph=j/LO*6.2832;
+        const nx=Math.sin(th)*Math.cos(ph), ny=Math.cos(th), nz=Math.sin(th)*Math.sin(ph); pos.push(nx*rx,ny*ry,nz*rz); nor.push(nx,ny,nz); } }
+      for (let i=0;i<LA;i++) for (let j=0;j<LO;j++){ const a=i*(LO+1)+j, b=a+LO+1; idx.push(a,a+1,b, a+1,b+1,b); }
+    }
+    // ensure outward winding (CCW) by checking against normals
+    for (let t=0;t<idx.length;t+=3){ const a=idx[t],b=idx[t+1],c=idx[t+2];
+      const u=[pos[b*3]-pos[a*3],pos[b*3+1]-pos[a*3+1],pos[b*3+2]-pos[a*3+2]], v=[pos[c*3]-pos[a*3],pos[c*3+1]-pos[a*3+1],pos[c*3+2]-pos[a*3+2]];
+      const n=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]];
+      if (n[0]*nor[a*3]+n[1]*nor[a*3+1]+n[2]*nor[a*3+2] < 0) { idx[t+1]=c; idx[t+2]=b; } }
+    return { pos, nor, idx };
+  }
+  const primMat = p => rotMat(p.rot[0],p.rot[1],p.rot[2]);
+
+  // ---- software renderer (canvas 2D painter's algorithm) ----
+  function render(ctx, model, W, H, yawDeg, pitchDeg, bg, bobY) {
+    ctx.clearRect(0,0,W,H);
+    if (bg) { ctx.fillStyle = bg; ctx.fillRect(0,0,W,H); }
+    const cy=Math.cos(yawDeg*D), sy=Math.sin(yawDeg*D), cp=Math.cos(pitchDeg*D), sp=Math.sin(pitchDeg*D);
+    // bounds for auto-fit
+    let maxR = 1; model.prims.forEach(p=>{ const r=Math.hypot(p.pos[0],p.pos[1]-0,p.pos[2])+Math.max(...p.size)*0.7; if (r>maxR) maxR=r; });
+    const cyc = model.prims.reduce((a,p)=>Math.max(a,p.pos[1]+p.size[1]/2),0)/2;
+    const tris=[];
+    const L=[0.45,0.8,0.4], ll=Math.hypot(...L); L[0]/=ll; L[1]/=ll; L[2]/=ll;
+    model.__fit = model.__fit || (function(){ let h=0,w=0; model.prims.forEach(p=>{ h=Math.max(h,p.pos[1]+p.size[1]/2); w=Math.max(w,Math.hypot(p.pos[0],p.pos[2])+Math.max(p.size[0],p.size[2])/2); }); return Math.max(h/2, w*0.9, 1)*1.08; })();
+    model.prims.forEach(p => {
+      const g = geom(p), R = primMat(p), col = hex2rgb(p.color), neon = p.mat==='Neon', glass = p.mat==='Glass', metal = p.mat==='Metal';
+      const tp = i => { let v=apply(R,[g.pos[i*3],g.pos[i*3+1],g.pos[i*3+2]]); v=[v[0]+p.pos[0], v[1]+p.pos[1]-cyc+(bobY||0), v[2]+p.pos[2]];
+        const x=v[0]*cy - v[2]*sy, z0=v[0]*sy + v[2]*cy; const y=v[1]*cp - z0*sp, z=v[1]*sp + z0*cp; return [x,y,z]; };
+      const nn = i => { const n=apply(R,[g.nor[i*3],g.nor[i*3+1],g.nor[i*3+2]]); const x=n[0]*cy-n[2]*sy, z0=n[0]*sy+n[2]*cy; return [x, n[1]*cp - z0*sp, n[1]*sp + z0*cp]; };
+      for (let t=0;t<g.idx.length;t+=3) { const a=g.idx[t],b=g.idx[t+1],c=g.idx[t+2]; const A=tp(a),B=tp(b),C=tp(c);
+        const n=nn(a); if (n[2] > 0.02 && !glass) continue; // back-face (camera looks -z... viewer at +z? we use z<0 front)
+        const rl = n[0]*L[0]*0 ; // placeholder
+        tris.push({ A, B, C, n, col, neon, glass, metal, z:(A[2]+B[2]+C[2])/3 }); }
+    });
+    
+    let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9; tris.forEach(t=>[t.A,t.B,t.C].forEach(v=>{ x0=Math.min(x0,v[0]);x1=Math.max(x1,v[0]);y0=Math.min(y0,v[1]);y1=Math.max(y1,v[1]); }));
+    if (!(x1>x0) || !(y1>y0)) return;
+    let scale, ox, oy;
+    if (model.spin || model.bob) { const fr=Math.max(1, model.__fit||1); scale=Math.min(W*0.78/(fr*2), H*0.8/(fr*2)); ox=0; oy=0; }
+    else { scale=Math.min(W*0.84/(x1-x0), H*0.84/(y1-y0)); ox=(x0+x1)/2; oy=(y0+y1)/2; }
+    // z-buffer rasterizer, 2x supersampled
+    const SS = (W*H > 600000) ? 1.5 : 2, BW = Math.round(W*SS), BH = Math.round(H*SS), sc = scale*SS;
+    const img = new Uint8ClampedArray(BW*BH*4), zb = new Float32Array(BW*BH).fill(1e9);
+    const f = v => Math.max(0, Math.min(255, Math.round(v*255)));
+    tris.forEach(t => {
+      let d = t.n[0]*0.35 + t.n[1]*0.75 + (-t.n[2])*0.55; d = Math.max(0, d);
+      let k = t.neon ? 1.1 : 0.45 + 0.6*d; if (t.metal) k = 0.32 + 0.85*Math.pow(d,1.3);
+      let r=t.col[0]*k, g=t.col[1]*k, b=t.col[2]*k;
+      if (t.glass) { r=r*0.65+0.35; g=g*0.65+0.35; b=b*0.65+0.35; }
+      const R8=f(r), G8=f(g), B8=f(b);
+      const ax=BW/2+(t.A[0]-ox)*sc, ay=BH/2-(t.A[1]-oy)*sc, bx=BW/2+(t.B[0]-ox)*sc, by=BH/2-(t.B[1]-oy)*sc, cx2=BW/2+(t.C[0]-ox)*sc, cy2=BH/2-(t.C[1]-oy)*sc;
+      const minX=Math.max(0,Math.floor(Math.min(ax,bx,cx2))), maxX=Math.min(BW-1,Math.ceil(Math.max(ax,bx,cx2)));
+      const minY=Math.max(0,Math.floor(Math.min(ay,by,cy2))), maxY=Math.min(BH-1,Math.ceil(Math.max(ay,by,cy2)));
+      const den=(by-cy2)*(ax-cx2)+(cx2-bx)*(ay-cy2); if (Math.abs(den)<1e-9) return;
+      for (let y=minY;y<=maxY;y++) for (let x=minX;x<=maxX;x++) {
+        const px=x+0.5, py=y+0.5;
+        const w0=((by-cy2)*(px-cx2)+(cx2-bx)*(py-cy2))/den, w1=((cy2-ay)*(px-cx2)+(ax-cx2)*(py-cy2))/den, w2=1-w0-w1;
+        if (w0<-0.001||w1<-0.001||w2<-0.001) continue;
+        const z=w0*t.A[2]+w1*t.B[2]+w2*t.C[2], i=y*BW+x; if (z>=zb[i]) continue; zb[i]=z;
+        img[i*4]=R8; img[i*4+1]=G8; img[i*4+2]=B8; img[i*4+3]=255;
+      }
+    });
+    const off = (typeof OffscreenCanvas!=='undefined') ? new OffscreenCanvas(BW,BH) : Object.assign(document.createElement('canvas'),{ width:BW, height:BH });
+    off.getContext('2d').putImageData(new ImageData(img,BW,BH),0,0);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(off,0,0,W,H);
+  }
+
+  // ---- GLB ----
+  function toGlb(model, name) {
+    const nodes=[], meshes=[], materials=[], matIdx={}, accessors=[], views=[]; const chunks=[]; let byteLen=0;
+    const S = 0.28; // studs -> meters
+    const addBuf = (typedArr, target) => { const buf=Buffer_from(typedArr); const pad=(4-(buf.length%4))%4; const off=byteLen; chunks.push(buf); if (pad){ chunks.push(new Uint8Array(pad)); } byteLen += buf.length+pad; views.push(Object.assign({ buffer:0, byteOffset:off, byteLength:buf.length }, target?{ target }:{})); return views.length-1; };
+    const addAcc = (view, comp, count, type, min, max) => { const a={ bufferView:view, componentType:comp, count, type }; if (min) a.min=min; if (max) a.max=max; accessors.push(a); return accessors.length-1; };
+    model.prims.forEach((p,i) => {
+      const key = p.color+'|'+p.mat; if (matIdx[key]==null) { const c=hex2rgb(p.color); const m={ name:p.mat+'_'+p.color.slice(1), pbrMetallicRoughness:{ baseColorFactor:[c[0],c[1],c[2],p.mat==='Glass'?0.6:1], metallicFactor:p.mat==='Metal'?0.9:0, roughnessFactor:p.mat==='Metal'?0.35:p.mat==='Glass'?0.1:0.7 } };
+        if (p.mat==='Neon') m.emissiveFactor=[c[0],c[1],c[2]]; if (p.mat==='Glass') m.alphaMode='BLEND'; materials.push(m); matIdx[key]=materials.length-1; }
+      const g = geom(p); const pos=new Float32Array(g.pos.map(v=>v*S)), nor=new Float32Array(g.nor), idx=new Uint16Array(g.idx);
+      const mn=[Infinity,Infinity,Infinity], mx=[-Infinity,-Infinity,-Infinity]; for (let k=0;k<pos.length;k+=3) for (let a=0;a<3;a++){ mn[a]=Math.min(mn[a],pos[k+a]); mx[a]=Math.max(mx[a],pos[k+a]); }
+      const vp=addBuf(pos,34962), vn=addBuf(nor,34962), vi=addBuf(idx,34963);
+      const ap=addAcc(vp,5126,pos.length/3,'VEC3',mn,mx), an=addAcc(vn,5126,nor.length/3,'VEC3'), ai=addAcc(vi,5123,idx.length,'SCALAR');
+      meshes.push({ name:'Part'+(i+1), primitives:[{ attributes:{ POSITION:ap, NORMAL:an }, indices:ai, material:matIdx[key] }] });
+      const R = primMat(p); // row-major -> glTF column-major
+      const mat=[R[0],R[3],R[6],0, R[1],R[4],R[7],0, R[2],R[5],R[8],0, p.pos[0]*S,p.pos[1]*S,p.pos[2]*S,1];
+      nodes.push({ name:'Part'+(i+1), mesh:i, matrix:mat });
+    });
+    const rootChildren = nodes.map((_,i)=>i+1); nodes.unshift({ name:'Root', children:rootChildren });
+    const anims=[];
+    if (model.spin || model.bob) {
+      const times=[0,1,2,3,4].map(v=>v*1.0), q=[[0,0,0,1],[0,0.7071,0,0.7071],[0,1,0,0],[0,0.7071,0,-0.7071],[0,0,0,1]];
+      const tv=addBuf(new Float32Array(times)), ta=addAcc(tv,5126,5,'SCALAR',[0],[4]);
+      const channels=[], samplers=[];
+      if (model.spin) { const rv=addBuf(new Float32Array([].concat.apply([],q))), ra=addAcc(rv,5126,5,'VEC4'); samplers.push({ input:ta, output:ra, interpolation:'LINEAR' }); channels.push({ sampler:samplers.length-1, target:{ node:0, path:'rotation' } }); }
+      if (model.bob) { const tr=[0,0,0, 0,0.15,0, 0,0,0, 0,0.15,0, 0,0,0]; const bv=addBuf(new Float32Array(tr)), ba=addAcc(bv,5126,5,'VEC3'); samplers.push({ input:ta, output:ba, interpolation:'LINEAR' }); channels.push({ sampler:samplers.length-1, target:{ node:0, path:'translation' } }); }
+      anims.push({ name:model.spin?'Spin':'Bob', samplers, channels });
+    }
+    const gltf = { asset:{ version:'2.0', generator:'FreeForge' }, scene:0, scenes:[{ name:name||model.name, nodes:[0] }], nodes, meshes, materials, accessors, bufferViews:views, buffers:[{ byteLength:byteLen }] };
+    if (anims.length) gltf.animations = anims;
+    let json = JSON.stringify(gltf); while (json.length%4) json+=' ';
+    const jb = new TextEncoder().encode(json), total = 12+8+jb.length+8+byteLen, out=new Uint8Array(total), dv=new DataView(out.buffer);
+    dv.setUint32(0,0x46546C67,true); dv.setUint32(4,2,true); dv.setUint32(8,total,true);
+    dv.setUint32(12,jb.length,true); dv.setUint32(16,0x4E4F534A,true); out.set(jb,20);
+    let o=20+jb.length; dv.setUint32(o,byteLen,true); dv.setUint32(o+4,0x004E4942,true); o+=8; chunks.forEach(c=>{ out.set(c,o); o+=c.length; });
+    return out;
+  }
+  function Buffer_from(ta){ return new Uint8Array(ta.buffer, ta.byteOffset, ta.byteLength); }
+
+  // ---- Roblox: Parts ----
+  const MAT_TOKEN = { Plastic:256, Neon:288, Wood:512, Metal:1088, Glass:1568 };
+  function partParams(p) {
+    const R = primMat(p); let S = p.size.slice(), shape = 1, M = R;
+    if (p.t==='ball') { shape=0; }
+    else if (p.t==='cyl') { shape=2; S=[p.size[1], p.size[0], p.size[2]]; M = mul3(R, rotMat(0,0,90)); }
+    return { S, shape, M };
+  }
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  function toRbxmx(model, name) {
+    let n=0; const items = model.prims.map((p,i)=>{ const q=partParams(p), c=hex2rgb(p.color), M=q.M;
+      return `<Item class="Part" referent="RBX${++n+1}"><Properties><string name="Name">Part${i+1}</string><bool name="Anchored">true</bool>`+
+      `<token name="shape">${q.shape}</token><token name="Material">${MAT_TOKEN[p.mat]||256}</token>`+
+      `<Color3 name="Color3uint8">${(Math.round(c[0]*255)*65536+Math.round(c[1]*255)*256+Math.round(c[2]*255)+4278190080)>>>0}</Color3>`.replace(/<Color3 name="Color3uint8">(\d+)<\/Color3>/,'<Color3uint8 name="Color3uint8">$1</Color3uint8>')+
+      `<Vector3 name="size"><X>${q.S[0]}</X><Y>${q.S[1]}</Y><Z>${q.S[2]}</Z></Vector3>`+
+      `<CoordinateFrame name="CFrame"><X>${p.pos[0]}</X><Y>${p.pos[1]}</Y><Z>${p.pos[2]}</Z><R00>${M[0]}</R00><R01>${M[1]}</R01><R02>${M[2]}</R02><R10>${M[3]}</R10><R11>${M[4]}</R11><R12>${M[5]}</R12><R20>${M[6]}</R20><R21>${M[7]}</R21><R22>${M[8]}</R22></CoordinateFrame>`+
+      `</Properties></Item>`; }).join('');
+    return `<roblox version="4"><Item class="Model" referent="RBX1"><Properties><string name="Name">${esc(name||model.name)}</string></Properties>${items}</Item></roblox>`;
+  }
+  const f4 = v => +(+v).toFixed(4);
+  function toLuau(model, name) {
+    const L = ['-- Generated by FreeForge. Run in a Script (server) or the Studio command bar. Builds an anchored Model in Workspace.',
+      'local model = Instance.new("Model")', 'model.Name = ' + JSON.stringify(name||model.name),
+      'local function part(shape, mat, color, size, cf)', '\tlocal p = Instance.new("Part")', '\tp.Anchored = true; p.Shape = shape; p.Material = mat; p.Color = Color3.fromHex(color)', '\tp.Size = size; p.CFrame = cf; p.TopSurface = Enum.SurfaceType.Smooth; p.BottomSurface = Enum.SurfaceType.Smooth; p.Parent = model', '\treturn p', 'end'];
+    model.prims.forEach(p => {
+      const sh = p.t==='ball' ? 'Ball' : p.t==='cyl' ? 'Cylinder' : 'Block';
+      const sz = p.t==='cyl' ? [p.size[1],p.size[0],p.size[2]] : p.size;
+      const rot = `CFrame.Angles(math.rad(${f4(p.rot[0])}), math.rad(${f4(p.rot[1])}), math.rad(${f4(p.rot[2])}))` + (p.t==='cyl' ? ' * CFrame.Angles(0, 0, math.rad(90))' : '');
+      L.push(`part(Enum.PartType.${sh}, Enum.Material.${MAT_TOKEN[p.mat]?p.mat:'Plastic'}, "${p.color}", Vector3.new(${sz.map(f4).join(', ')}), CFrame.new(${p.pos.map(f4).join(', ')}) * ${rot})`);
+    });
+    L.push('model.PrimaryPart = model:FindFirstChildOfClass("Part")');
+    L.push('model:PivotTo(CFrame.new(0, 10, 0))');
+    L.push('model.Parent = workspace');
+    if (model.spin || model.bob) {
+      L.push('', '-- Animation: ' + (model.spin?'spin':'') + (model.spin&&model.bob?' + ':'') + (model.bob?'bob':''), 'local RunService = game:GetService("RunService")', 'local base = model:GetPivot()', 'local t0 = os.clock()',
+        'RunService.Heartbeat:Connect(function()', '\tlocal t = os.clock() - t0',
+        '\tlocal y = ' + (model.bob ? 'math.sin(t * 2) * 0.6' : '0'), '\tmodel:PivotTo(base * CFrame.new(0, y, 0) * CFrame.Angles(0, ' + (model.spin ? 't * 1.2' : '0') + ', 0))', 'end)');
+    }
+    return L.join('\n') + '\n';
+  }
+  function validateGlb(u8) {
+    const e=[], dv=new DataView(u8.buffer,u8.byteOffset,u8.byteLength);
+    if (dv.getUint32(0,true)!==0x46546C67) e.push('magic'); if (dv.getUint32(4,true)!==2) e.push('version'); if (dv.getUint32(8,true)!==u8.length) e.push('length');
+    const jl=dv.getUint32(12,true); let j; try { j=JSON.parse(new TextDecoder().decode(u8.subarray(20,20+jl))); } catch(x){ e.push('json'); return e; }
+    const bl=dv.getUint32(20+jl,true); if (j.buffers[0].byteLength!==bl) e.push('bin length '+bl+' vs '+j.buffers[0].byteLength);
+    j.accessors.forEach((a,i)=>{ const v=j.bufferViews[a.bufferView]; const sz={5126:4,5123:2}[a.componentType]*({SCALAR:1,VEC3:3,VEC4:4}[a.type]); if (a.count*sz>v.byteLength) e.push('acc '+i+' overflow'); if (v.byteOffset%4) e.push('align'); });
+    j.meshes.forEach(m=>m.primitives.forEach(p=>{ const idxA=j.accessors[p.indices], posA=j.accessors[p.attributes.POSITION]; const v=j.bufferViews[idxA.bufferView]; const ia=new Uint16Array(u8.buffer, u8.byteOffset+20+jl+8+v.byteOffset, idxA.count); for (let k=0;k<ia.length;k++) if (ia[k]>=posA.count){ e.push('index oob'); break; } }));
+    return e;
+  }
+  const api = { PALETTES, MODELS, buildModel, render, geom, toGlb, toRbxmx, toLuau, validateGlb };
+  if (typeof module!=='undefined' && module.exports) module.exports=api; else root.FreeForge3D=api;
+})(typeof window!=='undefined'?window:globalThis);
+</script><script>/* FreeForge animation presets: Luau (TweenService) + CSS preview. */
+(function (root) {
+  'use strict';
+  const EASE = { Quad:'Quad', Back:'Back', Bounce:'Bounce', Elastic:'Elastic', Sine:'Sine', Linear:'Linear' };
+  const PRESETS = {
+    popIn:   { name:'Pop in', css:'@keyframes ffa{0%{transform:scale(0.2);opacity:0}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}', dur:0.45,
+      lua:(e,d)=>`-- Pop in: scale from 0.2 to 1 with overshoot
+local scale = obj:FindFirstChildOfClass("UIScale") or Instance.new("UIScale", obj)
+scale.Scale = 0.2
+obj.Visible = true
+TweenService:Create(scale, TweenInfo.new(${d}, Enum.EasingStyle.${e}, Enum.EasingDirection.Out), { Scale = 1 }):Play()` , ease:'Back' },
+    pulse:   { name:'Pulse (loop)', css:'@keyframes ffa{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}', dur:1.1, loop:true,
+      lua:(e,d)=>`-- Pulse forever
+local scale = obj:FindFirstChildOfClass("UIScale") or Instance.new("UIScale", obj)
+TweenService:Create(scale, TweenInfo.new(${d}, Enum.EasingStyle.${e}, Enum.EasingDirection.InOut, -1, true), { Scale = 1.07 }):Play()`, ease:'Sine' },
+    shake:   { name:'Shake (error)', css:'@keyframes ffa{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px)}40%{transform:translateX(9px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}', dur:0.4,
+      lua:(e,d)=>`-- Shake horizontally
+local p = obj.Position
+local step = ${d} / 6
+for i, off in ipairs({ -10, 9, -6, 4, -2, 0 }) do
+	TweenService:Create(obj, TweenInfo.new(step, Enum.EasingStyle.${e}), { Position = p + UDim2.fromOffset(off, 0) }):Play()
+	task.wait(step)
+end`, ease:'Quad' },
+    slideIn: { name:'Slide in', css:'@keyframes ffa{0%{transform:translateX(-120%);opacity:0}100%{transform:translateX(0);opacity:1}}', dur:0.5,
+      lua:(e,d)=>`-- Slide in from the left
+local goal = obj.Position
+obj.Position = goal - UDim2.fromScale(1.2, 0)
+obj.Visible = true
+TweenService:Create(obj, TweenInfo.new(${d}, Enum.EasingStyle.${e}, Enum.EasingDirection.Out), { Position = goal }):Play()`, ease:'Quad' },
+    bounce:  { name:'Bounce drop', css:'@keyframes ffa{0%{transform:translateY(-160px);opacity:0}100%{transform:translateY(0);opacity:1}}', dur:0.7, cssEase:'cubic-bezier(.3,1.6,.5,1)',
+      lua:(e,d)=>`-- Drop in with a bounce
+local goal = obj.Position
+obj.Position = goal - UDim2.fromOffset(0, 160)
+obj.Visible = true
+TweenService:Create(obj, TweenInfo.new(${d}, Enum.EasingStyle.${e}, Enum.EasingDirection.Out), { Position = goal }):Play()`, ease:'Bounce' },
+    glow:    { name:'Glow stroke (loop)', css:'@keyframes ffa{0%,100%{filter:drop-shadow(0 0 2px #fff)}50%{filter:drop-shadow(0 0 14px #fff)}}', dur:1.4, loop:true,
+      lua:(e,d)=>`-- Pulse the outline thickness
+local stroke = obj:FindFirstChildOfClass("UIStroke")
+if stroke then
+	TweenService:Create(stroke, TweenInfo.new(${d}, Enum.EasingStyle.${e}, Enum.EasingDirection.InOut, -1, true), { Thickness = stroke.Thickness + 3 }):Play()
+end`, ease:'Sine' },
+    fadeIn:  { name:'Fade in', css:'@keyframes ffa{0%{opacity:0}100%{opacity:1}}', dur:0.5,
+      lua:(e,d)=>`-- Fade in a frame and its text
+obj.Visible = true
+for _, d in ipairs(obj:GetDescendants()) do
+	if d:IsA("TextLabel") or d:IsA("TextButton") then
+		local goal = d.TextTransparency; d.TextTransparency = 1
+		TweenService:Create(d, TweenInfo.new(${d}, Enum.EasingStyle.${e}), { TextTransparency = goal }):Play()
+	end
+end
+local g = obj.BackgroundTransparency; obj.BackgroundTransparency = 1
+TweenService:Create(obj, TweenInfo.new(${d}, Enum.EasingStyle.${e}), { BackgroundTransparency = g }):Play()`, ease:'Sine' }
+  };
+  function uiLuau(key, o) {
+    o = o || {}; const p = PRESETS[key] || PRESETS.popIn; const e = EASE[o.ease] || p.ease; const d = Math.min(5, Math.max(0.05, +o.dur || p.dur));
+    return `-- Generated by FreeForge. Use: animate(frameOrButton) from a LocalScript.\nlocal TweenService = game:GetService("TweenService")\nlocal function animate(obj)\n` +
+      p.lua(e, d).split('\n').map(l=>'\t'+l).join('\n') + `\nend\n\nlocal gui = game.Players.LocalPlayer:WaitForChild("PlayerGui")\nlocal target = gui:FindFirstChild("FreeForgeUI") and gui.FreeForgeUI:FindFirstChildWhichIsA("Frame")\nif target then animate(target) end\n\nreturn animate\n`;
+  }
+  const api = { PRESETS, EASE, uiLuau };
+  if (typeof module!=='undefined' && module.exports) module.exports=api; else root.FreeForgeAnim=api;
+})(typeof window!=='undefined'?window:globalThis);
+</script><script>/* FreeForge thumbnails/icons: canvas compositor (browser). Uses FreeForge3D.render for the hero model. */
+(function (root) {
+  'use strict';
+  const STYLES = {
+    sunburst: { name:'Sunburst', bg:['#ffb347','#ff5e62'], ray:'rgba(255,255,255,0.16)', t0:'#fff6b0', t1:'#ffb300', stroke:'#2a1200' },
+    neon:     { name:'Neon Night', bg:['#1a0b3b','#050b1f'], ray:'rgba(0,229,255,0.12)', t0:'#9dfcff', t1:'#00b7ff', stroke:'#04122a', grid:'#00e5ff' },
+    candy:    { name:'Candy', bg:['#ffd1ec','#b79bff'], ray:'rgba(255,255,255,0.35)', t0:'#ffffff', t1:'#ff7ac6', stroke:'#5b1c66' },
+    dark:     { name:'Dark Fantasy', bg:['#2b1230','#07070c'], ray:'rgba(255,122,69,0.14)', t0:'#ffe2a8', t1:'#e0892f', stroke:'#120708', embers:true }
+  };
+  function rng(seed){ let s=seed>>>0||1; return ()=>((s=(s*1664525+1013904223)>>>0)/4294967296); }
+  function fitFont(ctx, text, maxW, size, font) { let s=size; ctx.font = `900 ${s}px ${font}`; while (ctx.measureText(text).width > maxW && s > 20) { s -= 4; ctx.font = `900 ${s}px ${font}`; } return s; }
+  function draw(canvas, o) {
+    const W = canvas.width, H = canvas.height, ctx = canvas.getContext('2d'), st = STYLES[o.style] || STYLES.sunburst, r = rng(o.seed||5), k = W/1280;
+    // background
+    const g = ctx.createLinearGradient(0,0,W,H); g.addColorStop(0,st.bg[0]); g.addColorStop(1,st.bg[1]); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+    // rays
+    ctx.save(); ctx.translate(W*0.62,H*0.55); const n=18; for (let i=0;i<n;i++){ const a=i/n*Math.PI*2; ctx.fillStyle=st.ray; ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,W,a,a+Math.PI/n*0.9); ctx.closePath(); ctx.fill(); } ctx.restore();
+    if (st.grid) { ctx.strokeStyle='rgba(0,229,255,0.25)'; ctx.lineWidth=2*k; for(let i=0;i<14;i++){ const y=H*0.62+Math.pow(i/13,2)*H*0.38; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); } for(let i=-10;i<=10;i++){ ctx.beginPath(); ctx.moveTo(W*0.5+i*20*k,H*0.62); ctx.lineTo(W*0.5+i*160*k,H); ctx.stroke(); } }
+    // glow behind hero
+    const rg = ctx.createRadialGradient(W*0.7,H*0.5,0,W*0.7,H*0.5,H*0.6); rg.addColorStop(0,'rgba(255,255,255,0.55)'); rg.addColorStop(1,'rgba(255,255,255,0)'); ctx.fillStyle=rg; ctx.fillRect(0,0,W,H);
+    // sparkles / embers
+    for (let i=0;i<46;i++){ const x=r()*W,y=r()*H,s=(1+r()*4)*k; ctx.fillStyle = st.embers ? `rgba(255,${120+Math.floor(r()*100)},60,${0.3+r()*0.6})` : `rgba(255,255,255,${0.25+r()*0.6})`; ctx.beginPath(); ctx.arc(x,y,s,0,7); ctx.fill(); }
+    // hero model
+    if (o.model) {
+      const tmp = document.createElement('canvas'); tmp.width = Math.round(H*1.05); tmp.height = Math.round(H*1.05);
+      root.FreeForge3D.render(tmp.getContext('2d'), o.model, tmp.width, tmp.height, o.yaw==null?32:o.yaw, -16, null, 0);
+      const hs = H*0.8; ctx.save(); ctx.shadowColor='rgba(0,0,0,0.55)'; ctx.shadowBlur=30*k; ctx.shadowOffsetY=18*k; ctx.drawImage(tmp, W*0.72-hs/2, H*0.5-hs/2, hs, hs); ctx.restore();
+      ctx.save(); ctx.globalAlpha=0.9; ctx.shadowColor=o.glow||'#ffffff'; ctx.shadowBlur=40*k; ctx.drawImage(tmp, W*0.72-hs/2, H*0.5-hs/2, hs, hs); ctx.restore();
+    }
+    // title
+    const title = (o.title||'MY GAME').toUpperCase(), font = 'Impact, "Arial Black", sans-serif';
+    ctx.save(); ctx.translate(W*0.06, H*0.5); ctx.rotate(-0.06);
+    const maxW = W*0.56; const words = title.split(' '); let lines = words.length>1 && title.length>9 ? [words.slice(0,Math.ceil(words.length/2)).join(' '), words.slice(Math.ceil(words.length/2)).join(' ')] : [title];
+    const fs = Math.min(...lines.map(l=>fitFont(ctx,l,maxW,200*k,font))); ctx.font=`900 ${fs}px ${font}`; ctx.textBaseline='middle'; ctx.lineJoin='round';
+    lines.forEach((l,i)=>{ const y=(i-(lines.length-1)/2)*fs*1.0;
+      ctx.strokeStyle=st.stroke; ctx.lineWidth=fs*0.28; ctx.strokeText(l,0,y+fs*0.06);
+      const tg=ctx.createLinearGradient(0,y-fs/2,0,y+fs/2); tg.addColorStop(0,st.t0); tg.addColorStop(1,st.t1);
+      ctx.lineWidth=fs*0.12; ctx.strokeStyle='#ffffff'; ctx.strokeText(l,0,y); ctx.fillStyle=tg; ctx.fillText(l,0,y); });
+    ctx.restore();
+    // subtitle ribbon
+    if (o.subtitle) { ctx.save(); ctx.translate(W*0.06,H*0.84); ctx.rotate(-0.06); const sf=34*k; ctx.font=`900 ${sf}px ${font}`; const tw=ctx.measureText(o.subtitle.toUpperCase()).width+60*k;
+      ctx.fillStyle=st.stroke; ctx.fillRect(0,-sf*0.8,tw,sf*1.6); ctx.fillStyle=st.t1; ctx.fillRect(0,-sf*0.8,10*k,sf*1.6); ctx.fillStyle='#fff'; ctx.textBaseline='middle'; ctx.fillText(o.subtitle.toUpperCase(),30*k,2*k); ctx.restore(); }
+    // vignette
+    const vg=ctx.createRadialGradient(W/2,H/2,H*0.5,W/2,H/2,W*0.75); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.38)'); ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+  }
+  function drawIcon(canvas, o) {
+    const S=canvas.width, ctx=canvas.getContext('2d'), rc = o.rarity||'#c084fc', k=S/512;
+    const rr=(x,y,w,h,r)=>{ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); };
+    ctx.clearRect(0,0,S,S); rr(8*k,8*k,S-16*k,S-16*k,70*k); const g=ctx.createLinearGradient(0,0,0,S); g.addColorStop(0,'#3b3f63'); g.addColorStop(1,'#14162a'); ctx.fillStyle=g; ctx.fill();
+    ctx.save(); rr(8*k,8*k,S-16*k,S-16*k,70*k); ctx.clip(); const rg=ctx.createRadialGradient(S/2,S*0.5,0,S/2,S*0.5,S*0.55); rg.addColorStop(0,rc+'cc'); rg.addColorStop(1,rc+'00'); ctx.fillStyle=rg; ctx.fillRect(0,0,S,S); ctx.restore();
+    if (o.model) { const t=document.createElement('canvas'); t.width=t.height=S; root.FreeForge3D.render(t.getContext('2d'), o.model, S, S, o.yaw==null?35:o.yaw, -14, null, 0); ctx.save(); ctx.shadowColor='rgba(0,0,0,.6)'; ctx.shadowBlur=18*k; ctx.shadowOffsetY=10*k; ctx.drawImage(t,S*0.06,S*0.04,S*0.88,S*0.88); ctx.restore(); }
+    rr(8*k,8*k,S-16*k,S-16*k,70*k); ctx.lineWidth=14*k; ctx.strokeStyle=rc; ctx.stroke(); rr(20*k,20*k,S-40*k,S-40*k,58*k); ctx.lineWidth=3*k; ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.stroke();
+  }
+  root.FreeForgeThumb = { STYLES, draw, drawIcon };
+})(typeof window!=='undefined'?window:globalThis);
+</script>
+<script>
+const F=window.FreeForge,$=id=>document.getElementById(id);let tab='lua';
+for(const k in F.THEMES){const o=document.createElement('option');o.value=k;o.textContent=F.THEMES[k].name;$('theme').appendChild(o)}
+for(const k in F.COMPONENTS){const d=document.createElement('label');d.className='chk';d.innerHTML='<input type="checkbox" checked value="'+k+'"> '+F.COMPONENTS[k].name;$('comps').appendChild(d)}
+function sync(){const t=F.THEMES[$('theme').value];$('accent').value=t.accent;$('accent2').value=t.accent2;$('radius').value=t.radius;$('rv').textContent=t.radius}
+function opts(){return{theme:$('theme').value,accent:$('accent').value,accent2:$('accent2').value,radius:$('radius').value,cols:+$('cols').value,rows:+$('rows').value,name:$('kname').value,components:[...document.querySelectorAll('#comps input:checked')].map(i=>i.value)}}
+function render(){$('rv').textContent=$('radius').value;const tree=F.buildKit(opts());const t=F.THEMES[$('theme').value];
+const vm={game:['HUD','Buttons','Dialog'],inventory:['Inventory'],shop:['Shop']}[$('view').value];const pv=vm?{cls:tree.cls,props:tree.props,children:tree.children.filter(c=>vm.includes(c.props.Name))}:tree;$('stage').innerHTML=F.toHtml(pv,960,540);$('stage').firstChild.style.background='linear-gradient(135deg,'+t.bg+',#000)';
+$('code').textContent=tab==='lua'?F.toLuau(tree):F.toRbxmx(tree);window.__tree=tree}
+function dl(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+const fname=()=>(opts().name.replace(/[^A-Za-z0-9_-]/g,'')||'FreeForgeUI');
+$('dl-rbxmx').onclick=()=>dl(fname()+'.rbxmx',F.toRbxmx(F.buildKit(opts())),'application/xml');
+$('dl-lua').onclick=()=>dl(fname()+'.lua',F.toLuau(F.buildKit(opts())),'text/plain');
+$('cp-lua').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(F.toLuau(F.buildKit(opts()))).then(()=>{$('cp-lua').textContent='Copied';setTimeout(()=>$('cp-lua').textContent='Copy Luau script',1200)})};
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;render()});
+$('view').onchange=render;$('theme').onchange=()=>{sync();render()};
+['accent','accent2','radius','cols','rows','kname'].forEach(i=>$(i).oninput=render);
+document.getElementById('comps').onchange=render;sync();(function(){const h=location.hash.slice(1).split(',');if(h[0]&&F.THEMES[h[0]]){$('theme').value=h[0];sync()}if(h[1])$('view').value=h[1]})();render();
+
+/* ---- tabs, 3D, animation ---- */
+const G3=window.FreeForge3D,AN=window.FreeForgeAnim;let panel='ui',yaw=25,t0=performance.now();
+function showPanel(p){panel=p;['ui','m3d','anim','thumb'].forEach(x=>{$('p-'+x).classList.toggle('hid',x!==p);$('m-'+x).classList.toggle('hid',x!==p)});document.querySelectorAll('#top button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));if(p==='anim')aRender();if(p==='m3d')mRender();if(p==='thumb')tRender()}
+document.querySelectorAll('#top button').forEach(b=>b.onclick=()=>showPanel(b.dataset.p));
+for(const k in G3.MODELS){const o=document.createElement('option');o.value=k;o.textContent=G3.MODELS[k].name;$('mdl').appendChild(o)}
+for(const k in G3.PALETTES){const o=document.createElement('option');o.value=k;o.textContent=k[0].toUpperCase()+k.slice(1);$('pal').appendChild(o)}
+function mOpts(){return{model:$('mdl').value,palette:$('pal').value,accent:$('m-acc').value,scale:+$('msc').value,seed:+$('seed').value,spin:$('spin').checked,bob:$('bob').checked}}
+let model=null,fixedYaw=null;
+function mRender(){$('msv').textContent=$('msc').value;model=G3.buildModel(mOpts());$('mcode').textContent=G3.toLuau(model);$('m-info').textContent=model.prims.length+' parts, '+model.name}
+function frame3d(now){if(panel==='m3d'&&model){const t=(now-t0)/1000;const y=fixedYaw!=null?fixedYaw:(model.spin?t*69:25);G3.render($('cv').getContext('2d'),model,960,540,y,-18,null,model.bob?Math.sin(t*2)*0.6:0)}requestAnimationFrame(frame3d)}
+['mdl','pal','m-acc','msc','seed','spin','bob'].forEach(i=>$(i).oninput=mRender);
+const saveBytes=(n,b,t)=>dl(n,b,t);
+$('dl-glb').onclick=()=>{const u=G3.toGlb(model);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([u],{type:'model/gltf-binary'}));a.download=model.name.replace(/ /g,'')+'.glb';a.click()};
+$('dl-mrb').onclick=()=>dl(model.name.replace(/ /g,'')+'.rbxmx',G3.toRbxmx(model),'application/xml');
+$('dl-mlua').onclick=()=>dl(model.name.replace(/ /g,'')+'.lua',G3.toLuau(model),'text/plain');
+for(const k in AN.PRESETS){const o=document.createElement('option');o.value=k;o.textContent=AN.PRESETS[k].name;$('apre').appendChild(o)}
+for(const k in AN.EASE){const o=document.createElement('option');o.value=k;o.textContent=k;$('aease').appendChild(o)}
+function aRender(){const p=AN.PRESETS[$('apre').value];if(!$('adur').dataset.u){$('adur').value=p.dur}
+const ease=$('aease').value;$('acode').textContent=AN.uiLuau($('apre').value,{ease:$('aease').value,dur:+$('adur').value});
+const tree=F.buildKit({theme:$('theme').value,components:['shop']});$('astage').innerHTML=F.toHtml(tree,960,360);
+const el=$('astage').querySelector('[data-n="Shop"]');if(el){el.style.transform='scale(.62)';const w=document.createElement('style');w.textContent=p.css;$('astage').appendChild(w);el.style.transformOrigin='center';el.style.animation='ffa '+(+$('adur').value)+'s '+(p.cssEase||'ease-out')+' both'+(p.loop?' infinite':'');}}
+$('apre').onchange=()=>{$('adur').dataset.u='';aRender()};$('aease').onchange=aRender;$('adur').oninput=()=>{$('adur').dataset.u=1;aRender()};$('aplay').onclick=aRender;
+$('dl-alua').onclick=()=>dl('animate_'+$('apre').value+'.lua',AN.uiLuau($('apre').value,{ease:$('aease').value,dur:+$('adur').value}),'text/plain');
+$('aease').value='Quad';
+mRender();requestAnimationFrame(frame3d);
+
+/* ---- thumbnails ---- */
+const TH=window.FreeForgeThumb;
+for(const k in TH.STYLES){const o=document.createElement('option');o.value=k;o.textContent=TH.STYLES[k].name;$('t-style').appendChild(o)}
+for(const k in G3.MODELS){const o=document.createElement('option');o.value=k;o.textContent=G3.MODELS[k].name;$('t-model').appendChild(o)}
+for(const k in G3.PALETTES){const o=document.createElement('option');o.value=k;o.textContent=k;$('t-pal').appendChild(o)}
+function tModel(){return G3.buildModel({model:$('t-model').value,palette:$('t-pal').value,spin:false})}
+function tRender(){const m=tModel();TH.draw($('tc'),{title:$('t-title').value,subtitle:$('t-sub').value,style:$('t-style').value,model:m,glow:'#ffffff'});TH.drawIcon($('ic'),{model:m,rarity:$('t-rar').value})}
+['t-title','t-sub','t-style','t-model','t-pal','t-rar'].forEach(i=>$(i).oninput=tRender);
+function dlCanvas(c,name){c.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click()})}
+$('dl-thumb').onclick=()=>{const c=document.createElement('canvas');c.width=1920;c.height=1080;TH.draw(c,{title:$('t-title').value,subtitle:$('t-sub').value,style:$('t-style').value,model:tModel(),glow:'#ffffff'});dlCanvas(c,'thumbnail.png')};
+$('dl-icon').onclick=()=>dlCanvas($('ic'),'icon.png');
+(function(){const h=location.hash.slice(1).split(',');if(h[0]==='thumb'){$('t-style').value=h[1]||'sunburst';$('t-model').value=h[2]||'sword';$('t-pal').value=h[3]||'fantasy';if(h[4])$('t-title').value=decodeURIComponent(h[4]);showPanel('thumb')}if(h[0]==='m3d'){if(h[1])$('mdl').value=h[1];if(h[2])$('pal').value=h[2];fixedYaw=+h[3]||30;mRender();showPanel('m3d')}if(h[0]==='anim'){$('apre').value=h[1]||'popIn';showPanel('anim')}})();
+</script></body></html>
