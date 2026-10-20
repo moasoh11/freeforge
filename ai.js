@@ -24,8 +24,8 @@
     if (!c) throw new Error('Empty AI answer');
     return c;
   }
-  async function askProxy(system, user, signal) {
-    const r = await fetch(WORKER_URL + '/llm', { method:'POST', headers:{ 'content-type':'application/json' }, signal: signal || AbortSignal.timeout(60000), body: JSON.stringify({ system, user: String(user).slice(0, 400) }) });
+  async function askProxy(system, user, signal, model) {
+    const r = await fetch(WORKER_URL + '/llm', { method:'POST', headers:{ 'content-type':'application/json' }, signal: signal || AbortSignal.timeout(60000), body: JSON.stringify({ system, user: String(user).slice(0, model ? 600 : 400), model }) });
     if (!r.ok) { let m = ''; try { m = (await r.json()).error; } catch (e) {} throw new Error(m || 'AI proxy error ' + r.status); }
     const j = await r.json(); if (!j.text) throw new Error('Empty AI answer'); return j.text;
   }
@@ -109,6 +109,14 @@ Rules: studs, Y up, the whole model sits on y=0, centered on x=0 and z=0, total 
 Rules: coordinates are LOCAL to the section: (0,0,0) is the middle of the section box, and every part must stay inside the box you are given. "cyl" is upright (size = [diameter, height, diameter]), "ball" size = [d,d,d], rot in degrees. Use 5 to 14 parts with real detail (trim, edges, handles, windows, studs, bevels made from thin rotated boxes). Use only the given palette colors (Neon only for glowing bits). Parts must touch their neighbours.`;
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   async function waitCooldown(onStatus) { let l; while ((l = cooldownLeft()) > 0) { if (onStatus) onStatus('waiting ' + l + 's for the free AI rate limit'); await sleep(Math.min(l, 5) * 1000 + 200); } }
+  // Big open model (gpt-oss-20b) on our own Worker: single shot, free (about 50 neurons), 60 per day shared.
+  async function generateModelBig(prompt, signal) {
+    if (!WORKER_URL) throw new Error('Fast AI is not available right now');
+    const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe what to build');
+    const run = () => askProxy(MODEL_SYSTEM, 'Build: ' + p + '. Use 12 to 20 parts. Build a clear recognizable silhouette first, then add detail. Every part must touch another part.', signal || AbortSignal.timeout(90000), 'oss');
+    let t; try { t = await run(); } catch (e) { if (/Empty|error/i.test(e.message)) t = await run(); else throw e; }
+    return sanitizeModel(extractJson(t));
+  }
   async function generateModelMulti(prompt, opts) {
     opts = opts || {}; const onStatus = opts.onStatus || (() => {}), signal = opts.signal;
     const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe what to build');
@@ -156,6 +164,6 @@ Rules: panel is a dark or light surface, panel2 slightly different, text must ha
     const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe the game style');
     return sanitizeTheme(extractJson(await ask(THEME_SYSTEM, 'Game style: ' + p, signal)));
   }
-  const api = { ask, extractJson, sanitizeModel, sanitizeTheme, generateModel, generateTheme, generateModelMulti, generateImage, generateBible, generateThemeFast, generateScript, setWorker: u => { WORKER_URL = String(u || '').replace(/\/$/, ''); }, cooldownLeft, ENDPOINT };
+  const api = { generateModelBig, ask, extractJson, sanitizeModel, sanitizeTheme, generateModel, generateTheme, generateModelMulti, generateImage, generateBible, generateThemeFast, generateScript, setWorker: u => { WORKER_URL = String(u || '').replace(/\/$/, ''); }, cooldownLeft, ENDPOINT };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FreeForgeAI = api;
 })(typeof window !== 'undefined' ? window : globalThis);

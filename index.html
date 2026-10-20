@@ -755,8 +755,8 @@ TweenService:Create(obj, TweenInfo.new(${d}, Enum.EasingStyle.${e}), { Backgroun
     if (!c) throw new Error('Empty AI answer');
     return c;
   }
-  async function askProxy(system, user, signal) {
-    const r = await fetch(WORKER_URL + '/llm', { method:'POST', headers:{ 'content-type':'application/json' }, signal: signal || AbortSignal.timeout(60000), body: JSON.stringify({ system, user: String(user).slice(0, 400) }) });
+  async function askProxy(system, user, signal, model) {
+    const r = await fetch(WORKER_URL + '/llm', { method:'POST', headers:{ 'content-type':'application/json' }, signal: signal || AbortSignal.timeout(60000), body: JSON.stringify({ system, user: String(user).slice(0, model ? 600 : 400), model }) });
     if (!r.ok) { let m = ''; try { m = (await r.json()).error; } catch (e) {} throw new Error(m || 'AI proxy error ' + r.status); }
     const j = await r.json(); if (!j.text) throw new Error('Empty AI answer'); return j.text;
   }
@@ -840,6 +840,14 @@ Rules: studs, Y up, the whole model sits on y=0, centered on x=0 and z=0, total 
 Rules: coordinates are LOCAL to the section: (0,0,0) is the middle of the section box, and every part must stay inside the box you are given. "cyl" is upright (size = [diameter, height, diameter]), "ball" size = [d,d,d], rot in degrees. Use 5 to 14 parts with real detail (trim, edges, handles, windows, studs, bevels made from thin rotated boxes). Use only the given palette colors (Neon only for glowing bits). Parts must touch their neighbours.`;
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   async function waitCooldown(onStatus) { let l; while ((l = cooldownLeft()) > 0) { if (onStatus) onStatus('waiting ' + l + 's for the free AI rate limit'); await sleep(Math.min(l, 5) * 1000 + 200); } }
+  // Big open model (gpt-oss-20b) on our own Worker: single shot, free (about 50 neurons), 60 per day shared.
+  async function generateModelBig(prompt, signal) {
+    if (!WORKER_URL) throw new Error('Fast AI is not available right now');
+    const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe what to build');
+    const run = () => askProxy(MODEL_SYSTEM, 'Build: ' + p + '. Use 12 to 20 parts. Build a clear recognizable silhouette first, then add detail. Every part must touch another part.', signal || AbortSignal.timeout(90000), 'oss');
+    let t; try { t = await run(); } catch (e) { if (/Empty|error/i.test(e.message)) t = await run(); else throw e; }
+    return sanitizeModel(extractJson(t));
+  }
   async function generateModelMulti(prompt, opts) {
     opts = opts || {}; const onStatus = opts.onStatus || (() => {}), signal = opts.signal;
     const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe what to build');
@@ -887,7 +895,7 @@ Rules: panel is a dark or light surface, panel2 slightly different, text must ha
     const p = String(prompt || '').slice(0, 200).trim(); if (!p) throw new Error('Describe the game style');
     return sanitizeTheme(extractJson(await ask(THEME_SYSTEM, 'Game style: ' + p, signal)));
   }
-  const api = { ask, extractJson, sanitizeModel, sanitizeTheme, generateModel, generateTheme, generateModelMulti, generateImage, generateBible, generateThemeFast, generateScript, setWorker: u => { WORKER_URL = String(u || '').replace(/\/$/, ''); }, cooldownLeft, ENDPOINT };
+  const api = { generateModelBig, ask, extractJson, sanitizeModel, sanitizeTheme, generateModel, generateTheme, generateModelMulti, generateImage, generateBible, generateThemeFast, generateScript, setWorker: u => { WORKER_URL = String(u || '').replace(/\/$/, ''); }, cooldownLeft, ENDPOINT };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FreeForgeAI = api;
 })(typeof window !== 'undefined' ? window : globalThis);
 </script><script>/* FreeForge thumbnails/icons: canvas compositor (browser). Uses FreeForge3D.render for the hero model. */
@@ -1114,6 +1122,7 @@ const r=EN.build(bb,{core:F,g3d:G3,anim:AN});ePack=r;eShow(r);$('e-zip').disable
 $('e-sb').onclick=()=>{const st=$('e-ss'),b=$('e-sb');b.disabled=true;st.textContent='Writing...';AI.generateScript($('e-sp').value).then(t=>{$('e-script').textContent=t;st.textContent='Done. AI code can have bugs: read it and test in Studio before publishing.'}).catch(e=>{st.textContent='Could not write: '+e.message}).finally(()=>{b.disabled=false})};
 $('e-zip').onclick=()=>{if(!ePack)return;const files=Object.assign({},ePack.files);let n=2;const fin=()=>{if(--n)return;const z=EN.zip(files);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([z],{type:'application/zip'}));a.download=ePack.bible.name+'_FreeForgePack.zip';a.click()};
 const grab=(cv,nm)=>cv.toBlob(b=>b.arrayBuffer().then(ab=>{files[nm]=new Uint8Array(ab);fin()}));grab($('e-th'),'thumbnail.png');grab($('e-ic'),'icon.png')};
+$('ai-mb-b').onclick=()=>{const st=$('ai-m-s'),bs=['ai-m-b','ai-mm-b','ai-mf-b','ai-mb-b'].map($);bs.forEach(b=>b.disabled=true);const t0=Date.now();st.textContent='Big AI model thinking (about 15s)...';AI.generateModelBig($('ai-m-p').value).then(m=>{aiModel=m;mRender();st.textContent='Done in '+((Date.now()-t0)/1000).toFixed(1)+'s ('+m.prims.length+' parts). Quality varies, so try again for another take.'}).catch(e=>{st.textContent='Could not generate: '+e.message}).finally(()=>bs.forEach(b=>b.disabled=false))};
 $('ai-mf-b').onclick=()=>{const st=$('ai-m-s'),bs=['ai-m-b','ai-mm-b','ai-mf-b'].map($);bs.forEach(b=>b.disabled=true);const t0=Date.now();AI.generateModelMulti($('ai-m-p').value,{fast:true,onStatus:x=>{st.textContent='Fast multi-pass: '+x}}).then(m=>{aiModel=m;mRender();st.textContent='Done in '+((Date.now()-t0)/1000).toFixed(1)+'s ('+m.passes+' passes, '+m.prims.length+' parts). Fast mode is lower quality than the detailed button.'}).catch(e=>{st.textContent='Could not generate: '+e.message}).finally(()=>bs.forEach(b=>b.disabled=false))};
 /* ---- thumbnails ---- */
 const TH=window.FreeForgeThumb;
